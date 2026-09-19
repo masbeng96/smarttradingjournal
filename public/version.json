@@ -1,13 +1,15 @@
 {
-  "version": "1.0.9",
-  "versionCode": 10,
+  "version": "1.0.10",
+  "versionCode": 11,
   "releaseDate": "2026-09-19",
   "minRequiredVersion": "1.0.0",
-  "title": "Trading Journal & Compound Planner Pro v1.0.9",
+  "title": "Trading Journal & Compound Planner Pro v1.0.10",
   "changelog": [
-    "Pembaruan Logo Baru (logo-trading.jpg) di seluruh antarmuka web, modal login/register, dan favicon",
-    "Pembaruan App Launcher Icon dan Splash Screen Android Native dengan logo trading resmi"
+    "Nonaktifkan sementara Interval Polling 5s untuk MT5 (Fetch 1x saat Mount)",
+    "Penambahan Error Catching dan Visual Diagnostic Log MT5 pada Dashboard",
+    "Verifikasi Headers: x-api-key dan Accept application/json",
+    "Penambahan CORS Headers & Preflight pada Cloud Backend Proxy"
   ],
-  "downloadUrl": "https://github.com/masbeng96/smarttradingjournal/releases/download/v1.0.9/TradingJournal-v1.0.9.apk",
+  "downloadUrl": "https://github.com/masbeng96/smarttradingjournal/releases/download/v1.0.10/TradingJournal-v1.0.10.apk",
   "mandatory": false
 }

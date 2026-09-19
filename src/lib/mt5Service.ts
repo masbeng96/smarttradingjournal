@@ -41,20 +41,22 @@ export async function fetchSingleMT5Account(accountId: 1 | 2 = 1): Promise<MT5Ac
 
   let endpointsToTry: string[];
   if (isNative) {
-    // On Native Android WebView: direct cleartext HTTP first, then full Cloud Run proxy
+    // On Native Android: try direct cleartext HTTP first, then cloud proxy
     endpointsToTry = [directUrl, cloudProxyUrl, cloudDirectProxy];
   } else if (isHttps) {
-    // On Web HTTPS: relative proxies to avoid Mixed Content
-    endpointsToTry = [relativeProxyUrl, directApiProxy, cloudProxyUrl];
+    // On HTTPS Web: try relative proxies to avoid Mixed Content, then cloud proxy
+    endpointsToTry = [relativeProxyUrl, directApiProxy, cloudProxyUrl, directUrl];
   } else {
-    // On Web HTTP (localhost):
+    // On localhost HTTP:
     endpointsToTry = [relativeProxyUrl, directApiProxy, directUrl, cloudProxyUrl];
   }
 
   const headers: Record<string, string> = {
-    'x-api-key': MT5_CONFIG.API_KEY,
+    'x-api-key': 'TokenRahasia2026',
     'Accept': 'application/json',
   };
+
+  const errorLogs: string[] = [];
 
   for (const endpoint of endpointsToTry) {
     const controller = new AbortController();
@@ -63,45 +65,57 @@ export async function fetchSingleMT5Account(accountId: 1 | 2 = 1): Promise<MT5Ac
     try {
       const response = await fetch(endpoint, {
         method: 'GET',
-        headers,
+        headers: {
+          'x-api-key': 'TokenRahasia2026',
+          'Accept': 'application/json',
+        },
         cache: 'no-store',
         signal: controller.signal,
       });
 
       clearTimeout(timeoutId);
 
-      if (response.ok) {
-        const data = await response.json();
-        
-        // Handle server-reported disconnection
-        if (data.isConnected === false) {
-          return {
-            akun: data.akun || `Akun ${accountId}`,
-            balance: Number(data.balance ?? 0),
-            equity: Number(data.equity ?? 0),
-            margin: Number(data.margin ?? 0),
-            floating_pnl: Number(data.floating_pnl ?? 0),
-            isConnected: false,
-            error: data.error || 'Server MT5 tidak merespons',
-          };
-        }
+      if (!response.ok) {
+        errorLogs.push(`[${endpoint}] HTTP ${response.status} (${response.statusText || 'Error'})`);
+        continue;
+      }
 
+      const data = await response.json();
+      
+      // Handle server-reported disconnection
+      if (data.isConnected === false) {
         return {
           akun: data.akun || `Akun ${accountId}`,
           balance: Number(data.balance ?? 0),
           equity: Number(data.equity ?? 0),
           margin: Number(data.margin ?? 0),
           floating_pnl: Number(data.floating_pnl ?? 0),
-          lastUpdated: new Date().toLocaleTimeString('id-ID'),
-          isConnected: true,
+          isConnected: false,
+          error: data.error || `Server MT5 mengembalikan isConnected=false (${endpoint})`,
         };
       }
-    } catch {
+
+      return {
+        akun: data.akun || `Akun ${accountId}`,
+        balance: Number(data.balance ?? 0),
+        equity: Number(data.equity ?? 0),
+        margin: Number(data.margin ?? 0),
+        floating_pnl: Number(data.floating_pnl ?? 0),
+        lastUpdated: new Date().toLocaleTimeString('id-ID'),
+        isConnected: true,
+      };
+    } catch (err: any) {
       clearTimeout(timeoutId);
-      // Continue to next endpoint attempt
+      const isAbort = err?.name === 'AbortError' || err?.message?.includes('aborted');
+      const errDetail = isAbort 
+        ? 'Timeout 5s (Server tidak merespons)' 
+        : (err?.message || err?.toString() || 'Network/CORS/Mixed Content Error');
+      errorLogs.push(`[${endpoint}] ${err?.name || 'Error'}: ${errDetail}`);
     }
   }
 
+  // If all attempts failed, compile diagnostic error message
+  const primaryError = errorLogs[0] || 'Tidak dapat terhubung ke endpoint MT5';
   return {
     akun: `Akun ${accountId}`,
     balance: 0,
@@ -109,7 +123,7 @@ export async function fetchSingleMT5Account(accountId: 1 | 2 = 1): Promise<MT5Ac
     margin: 0,
     floating_pnl: 0,
     isConnected: false,
-    error: `Server MT5 (202.155.94.173) offline`,
+    error: primaryError,
   };
 }
 

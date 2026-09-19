@@ -202,26 +202,31 @@ export const JournalProvider: React.FC<{ children: React.ReactNode }> = ({ child
       // Bind the active account based on logged-in user email
       if (assignedAccountId === 1) {
         setMt5Data(account1.isConnected ? account1 : null);
-        if (!account1.isConnected) setMt5Error(account1.error || 'Gagal memuat Akun 1 MT5');
-        else setMt5Error(null);
+        if (!account1.isConnected) {
+          setMt5Error(account1.error || 'Gagal memuat Akun 1 MT5');
+        } else {
+          setMt5Error(null);
+        }
       } else if (assignedAccountId === 2) {
         setMt5Data(account2.isConnected ? account2 : null);
-        if (!account2.isConnected) setMt5Error(account2.error || 'Gagal memuat Akun 2 MT5');
-        else setMt5Error(null);
+        if (!account2.isConnected) {
+          setMt5Error(account2.error || 'Gagal memuat Akun 2 MT5');
+        } else {
+          setMt5Error(null);
+        }
       }
     } catch (err: any) {
-      setMt5Error(err.message || 'Gagal memuat data MT5');
+      const errorMsg = err?.message || err?.toString() || 'Gagal memuat data MT5';
+      setMt5Error(errorMsg);
     } finally {
       setIsMT5Loading(false);
     }
   };
 
-  // Auto-sync MT5 data every 5 seconds ONLY if user is logged in with an assigned account
+  // Fetch MT5 data ONLY ONCE upon component mount or when user logs in (5s Interval Polling temporarily disabled)
   useEffect(() => {
     if (assignedAccountId) {
       refreshMT5Data();
-      const interval = setInterval(refreshMT5Data, MT5_CONFIG.POLL_INTERVAL_MS);
-      return () => clearInterval(interval);
     } else {
       setMt5Data(null);
       setMt5Error(null);

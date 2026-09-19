@@ -15,7 +15,8 @@ import {
   RotateCcw,
   Activity,
   WifiOff,
-  CalendarDays
+  CalendarDays,
+  AlertTriangle
 } from 'lucide-react';
 import { 
   ResponsiveContainer, 
@@ -221,16 +222,45 @@ export const OverviewDashboard: React.FC = () => {
               <Activity className="w-3 h-3 text-emerald-500/70" />
               <span>
                 {assignedAccountId 
-                  ? `Interval Polling: 5s • ${userProfile?.email} (Akun ${assignedAccountId})` 
+                  ? `Fetch 1x saat Mount • ${userProfile?.email} (Akun ${assignedAccountId})` 
                   : 'Mode Offline (Tanpa Auto-Sync MT5)'}
               </span>
             </span>
-            <span>
+            <span className="font-mono text-[10px]">
               {assignedAccountId
-                ? (mt5Data?.lastUpdated ? `Terakhir update: ${mt5Data.lastUpdated}` : 'Menghubungkan...')
+                ? (mt5Data?.lastUpdated 
+                    ? `Update: ${mt5Data.lastUpdated}` 
+                    : (isMT5Loading ? 'Menghubungkan...' : (mt5Error ? 'Gagal Terhubung' : 'Offline')))
                 : 'Login untuk Live Sync'}
             </span>
           </div>
+
+          {/* Visual Error Diagnostic Box (Temporarily displayed for debugging MT5 connection) */}
+          {assignedAccountId && mt5Error && (
+            <div className="mt-2.5 p-3 rounded-2xl bg-rose-950/70 border border-rose-500/40 text-xs text-rose-200 space-y-2 animate-fadeIn shadow-sm">
+              <div className="flex items-center justify-between font-bold text-rose-300">
+                <span className="flex items-center space-x-1.5 text-xs">
+                  <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
+                  <span>Log Diagnosa Error MT5 (Akun {assignedAccountId})</span>
+                </span>
+                <button 
+                  onClick={() => refreshMT5Data()}
+                  disabled={isMT5Loading}
+                  className="px-2.5 py-1 rounded-lg bg-rose-500/25 hover:bg-rose-500/40 text-rose-200 border border-rose-500/40 font-semibold text-[11px] transition-colors flex items-center space-x-1 disabled:opacity-50"
+                >
+                  <RotateCcw className={`w-3 h-3 ${isMT5Loading ? 'animate-spin' : ''}`} />
+                  <span>{isMT5Loading ? 'Memeriksa...' : 'Tes Ulang'}</span>
+                </button>
+              </div>
+              <div className="bg-slate-950/90 p-2 rounded-xl border border-rose-900/60 font-mono text-[11px] text-rose-300 break-all leading-relaxed">
+                {mt5Error}
+              </div>
+              <div className="text-[10px] text-slate-400 flex flex-wrap items-center justify-between gap-1 pt-0.5 border-t border-rose-900/30">
+                <span>Headers: <code className="text-slate-300 bg-slate-900 px-1 py-0.5 rounded">x-api-key: TokenRahasia2026, Accept: application/json</code></span>
+                <span>Endpoint: <code className="text-slate-300 bg-slate-900 px-1 py-0.5 rounded">http://202.155.94.173/api/account/{assignedAccountId}</code></span>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
