@@ -1,15 +1,14 @@
 {
-  "version": "1.0.10",
-  "versionCode": 11,
+  "version": "1.0.11",
+  "versionCode": 12,
   "releaseDate": "2026-09-19",
   "minRequiredVersion": "1.0.0",
-  "title": "Trading Journal & Compound Planner Pro v1.0.10",
+  "title": "Trading Journal & Compound Planner Pro v1.0.11",
   "changelog": [
-    "Nonaktifkan sementara Interval Polling 5s untuk MT5 (Fetch 1x saat Mount)",
-    "Penambahan Error Catching dan Visual Diagnostic Log MT5 pada Dashboard",
-    "Verifikasi Headers: x-api-key dan Accept application/json",
-    "Penambahan CORS Headers & Preflight pada Cloud Backend Proxy"
+    "Menampilkan pesan error asli sistem langsung dari catch(error) (error.message / error.name)",
+    "Penambahan console.error('Fetch API Error: ', error) untuk inspeksi DevTools",
+    "Pembaruan proxy backend server.js agar meneruskan error asli server/jaringan"
   ],
-  "downloadUrl": "https://github.com/masbeng96/smarttradingjournal/releases/download/v1.0.10/TradingJournal-v1.0.10.apk",
+  "downloadUrl": "https://github.com/masbeng96/smarttradingjournal/releases/download/v1.0.11/TradingJournal-v1.0.11.apk",
   "mandatory": false
 }

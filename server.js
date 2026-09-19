@@ -57,7 +57,7 @@ app.get(['/api/mt5/account/:id?', '/api/account/:id?'], async (req, res) => {
         margin: 0,
         floating_pnl: 0,
         isConnected: false,
-        error: `Server MT5 merespons HTTP ${mt5Res.status}`
+        error: `Server MT5 HTTP ${mt5Res.status} (${mt5Res.statusText || 'Error'})`
       });
     }
     const data = await mt5Res.json();
@@ -66,6 +66,7 @@ app.get(['/api/mt5/account/:id?', '/api/account/:id?'], async (req, res) => {
       isConnected: true,
     });
   } catch (err) {
+    console.error("Fetch API Error: ", err);
     res.status(200).json({ 
       akun: `Akun ${accountId}`,
       balance: 0,
@@ -73,7 +74,7 @@ app.get(['/api/mt5/account/:id?', '/api/account/:id?'], async (req, res) => {
       margin: 0,
       floating_pnl: 0,
       isConnected: false,
-      error: 'Server MT5 (202.155.94.173) offline / tidak merespons'
+      error: err?.message || err?.name || String(err)
     });
   }
 });

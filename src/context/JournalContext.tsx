@@ -215,9 +215,12 @@ export const JournalProvider: React.FC<{ children: React.ReactNode }> = ({ child
           setMt5Error(null);
         }
       }
-    } catch (err: any) {
-      const errorMsg = err?.message || err?.toString() || 'Gagal memuat data MT5';
-      setMt5Error(errorMsg);
+    } catch (error: any) {
+      console.error("Fetch API Error: ", error);
+      const rawError = error?.name
+        ? `${error.name}: ${error.message || String(error)}`
+        : (error?.message || error?.name || String(error) || 'Gagal memuat data MT5');
+      setMt5Error(rawError);
     } finally {
       setIsMT5Loading(false);
     }

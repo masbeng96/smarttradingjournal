@@ -252,7 +252,7 @@ export const OverviewDashboard: React.FC = () => {
                   <span>{isMT5Loading ? 'Memeriksa...' : 'Tes Ulang'}</span>
                 </button>
               </div>
-              <div className="bg-slate-950/90 p-2 rounded-xl border border-rose-900/60 font-mono text-[11px] text-rose-300 break-all leading-relaxed">
+              <div className="bg-slate-950/90 p-2.5 rounded-xl border border-rose-900/60 font-mono text-[11px] text-rose-300 break-all whitespace-pre-wrap leading-relaxed select-text">
                 {mt5Error}
               </div>
               <div className="text-[10px] text-slate-400 flex flex-wrap items-center justify-between gap-1 pt-0.5 border-t border-rose-900/30">

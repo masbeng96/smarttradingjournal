@@ -104,18 +104,18 @@ export async function fetchSingleMT5Account(accountId: 1 | 2 = 1): Promise<MT5Ac
         lastUpdated: new Date().toLocaleTimeString('id-ID'),
         isConnected: true,
       };
-    } catch (err: any) {
+    } catch (error: any) {
       clearTimeout(timeoutId);
-      const isAbort = err?.name === 'AbortError' || err?.message?.includes('aborted');
-      const errDetail = isAbort 
-        ? 'Timeout 5s (Server tidak merespons)' 
-        : (err?.message || err?.toString() || 'Network/CORS/Mixed Content Error');
-      errorLogs.push(`[${endpoint}] ${err?.name || 'Error'}: ${errDetail}`);
+      console.error("Fetch API Error: ", error);
+      const rawDetail = error?.name
+        ? `${error.name}: ${error.message || String(error)}`
+        : (error?.message || error?.name || String(error));
+      errorLogs.push(`[${endpoint}] ${rawDetail}`);
     }
   }
 
   // If all attempts failed, compile diagnostic error message
-  const primaryError = errorLogs[0] || 'Tidak dapat terhubung ke endpoint MT5';
+  const primaryError = errorLogs.join(' \n') || 'Tidak dapat terhubung ke endpoint MT5';
   return {
     akun: `Akun ${accountId}`,
     balance: 0,
