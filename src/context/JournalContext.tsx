@@ -184,29 +184,47 @@ export const JournalProvider: React.FC<{ children: React.ReactNode }> = ({ child
     return getAssignedMT5AccountId(userProfile?.email);
   }, [userProfile?.email]);
 
-  const refreshMT5Data = async () => {
-    // If user is not logged in or email is not in assigned MT5 list, do NOT sync MT5
-    if (!assignedAccountId) {
-      setMt5Data(null);
-      setMt5Error(null);
-      return;
-    }
-
+  const refreshMT5Data = async (signal?: AbortSignal) => {
     setIsMT5Loading(true);
     try {
       // Pull data from TWO sources simultaneously using Promise.all
-      const { account1, account2 } = await fetchBothMT5Accounts();
+      const { account1, account2, accumulated } = await fetchBothMT5Accounts(signal);
       setMt5Account1(account1);
       setMt5Account2(account2);
 
-      // Bind the active account based on logged-in user email
-      const activeAccount = assignedAccountId === 1 ? account1 : account2;
-      if (activeAccount.isConnected) {
-        setMt5Data(activeAccount);
+      // Bind the active account based on logged-in user email, or accumulated multi-account total
+      if (assignedAccountId === 1) {
+        if (account1.isConnected) {
+          setMt5Data(account1);
+          setMt5Error(null);
+        } else {
+          setMt5Data(null);
+          setMt5Error(account1.error || 'Gagal memuat Akun 1 MT5');
+        }
+      } else if (assignedAccountId === 2) {
+        if (account2.isConnected) {
+          setMt5Data(account2);
+          setMt5Error(null);
+        } else {
+          setMt5Data(null);
+          setMt5Error(account2.error || 'Gagal memuat Akun 2 MT5');
+        }
+      } else if (accumulated.isConnected) {
+        // Multi-Account Accumulation: Akun 1 + Akun 2 into single Total Saldo
+        setMt5Data({
+          akun: 'Total Saldo Akun (1 & 2)',
+          balance: accumulated.totalBalance,
+          equity: accumulated.totalEquity,
+          margin: accumulated.totalMargin,
+          floating_pnl: accumulated.totalFloatingPnl,
+          lastUpdated: accumulated.lastUpdated,
+          isConnected: true,
+        });
         setMt5Error(null);
       } else {
         setMt5Data(null);
-        setMt5Error(activeAccount.error || `Gagal memuat Akun ${assignedAccountId} MT5`);
+        const err = [account1.error, account2.error].filter(Boolean).join(' \n');
+        setMt5Error(err || 'Gagal memuat data MT5');
       }
     } catch (error: any) {
       if (error?.name === 'AbortError' || error?.message?.includes('aborted')) {
@@ -223,14 +241,14 @@ export const JournalProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   };
 
-  // Fetch MT5 data ONLY ONCE upon component mount or when user logs in (5s Interval Polling temporarily disabled)
+  // Fetch MT5 data using AbortController with cleanup handling
   useEffect(() => {
-    if (assignedAccountId) {
-      refreshMT5Data();
-    } else {
-      setMt5Data(null);
-      setMt5Error(null);
-    }
+    const controller = new AbortController();
+    refreshMT5Data(controller.signal);
+
+    return () => {
+      controller.abort();
+    };
   }, [assignedAccountId]);
 
   // 7. Firebase Config

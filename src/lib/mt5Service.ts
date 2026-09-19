@@ -4,12 +4,12 @@ import { MT5AccountData } from '../types/journal';
 export const CLOUD_BACKEND_ORIGIN = 'https://smarttrading-app-1019478115925.asia-southeast2.run.app';
 
 export const MT5_CONFIG = {
-  DIRECT_BASE: 'http://202.155.94.173/api/account',
-  PROXY_BASE: '/api/mt5/account',
-  CLOUD_PROXY_BASE: `${CLOUD_BACKEND_ORIGIN}/api/mt5/account`,
+  DIRECT_BASE: 'http://202.155.94.173/api/account/',
+  PROXY_BASE: 'https://corsproxy.io/?http://202.155.94.173/api/account/',
+  CLOUD_PROXY_BASE: `${CLOUD_BACKEND_ORIGIN}/api/mt5/account/`,
+  RELATIVE_PROXY_BASE: '/api/mt5/account/',
   API_KEY: 'TokenRahasia2026',
   POLL_INTERVAL_MS: 5000,
-  REQUEST_TIMEOUT_MS: 5000,
 };
 
 export const MT5_EMAIL_ACCOUNT_MAP: Record<string, 1 | 2> = {
@@ -27,41 +27,50 @@ export function getAssignedMT5AccountId(email?: string | null): (1 | 2) | null {
 }
 
 /**
- * Fetches real-time MT5 account data for a specific account ID (1 or 2).
+ * Gets dynamic MT5 base URL depending on platform (Capacitor native vs Web HTTPS)
  */
-export async function fetchSingleMT5Account(accountId: 1 | 2 = 1): Promise<MT5AccountData> {
+export function getDynamicMT5BaseUrl(): string {
   const isNative = typeof Capacitor !== 'undefined' && Capacitor.isNativePlatform();
-  const isHttps = typeof window !== 'undefined' && window.location && window.location.protocol === 'https:';
-
-  const directUrl = `${MT5_CONFIG.DIRECT_BASE}/${accountId}`;
-  const relativeProxyUrl = `${MT5_CONFIG.PROXY_BASE}/${accountId}`;
-  const cloudProxyUrl = `${MT5_CONFIG.CLOUD_PROXY_BASE}/${accountId}`;
-  const directApiProxy = `/api/account/${accountId}`;
-  const cloudDirectProxy = `${CLOUD_BACKEND_ORIGIN}/api/account/${accountId}`;
-
-  let endpointsToTry: string[];
   if (isNative) {
-    // On Native Android: try direct cleartext HTTP first, then cloud proxy
-    endpointsToTry = [directUrl, cloudProxyUrl, cloudDirectProxy];
-  } else if (isHttps) {
-    // On HTTPS Web: try relative proxies to avoid Mixed Content, then cloud proxy
-    endpointsToTry = [relativeProxyUrl, directApiProxy, cloudProxyUrl, directUrl];
-  } else {
-    // On localhost HTTP:
-    endpointsToTry = [relativeProxyUrl, directApiProxy, directUrl, cloudProxyUrl];
+    // Native Android APK: direct HTTP URL
+    return 'http://202.155.94.173/api/account/';
   }
+  // Web Preview: CORS proxy URL
+  return 'https://corsproxy.io/?http://202.155.94.173/api/account/';
+}
+
+/**
+ * Fetches single MT5 account data for account 1 or 2 using dynamic Capacitor routing
+ */
+export async function fetchSingleMT5Account(accountId: 1 | 2 = 1, signal?: AbortSignal): Promise<MT5AccountData> {
+  const isNative = typeof Capacitor !== 'undefined' && Capacitor.isNativePlatform();
+  
+  const primaryUrl = isNative 
+    ? `http://202.155.94.173/api/account/${accountId}`
+    : `https://corsproxy.io/?http://202.155.94.173/api/account/${accountId}`;
+
+  const fallbackUrls = [
+    `${CLOUD_BACKEND_ORIGIN}/api/mt5/account/${accountId}`,
+    `/api/mt5/account/${accountId}`,
+    `http://202.155.94.173/api/account/${accountId}`
+  ];
+
+  const candidateUrls = [primaryUrl, ...fallbackUrls.filter(u => u !== primaryUrl)];
+
+  const headers = {
+    'x-api-key': 'TokenRahasia2026',
+    'Accept': 'application/json',
+  };
 
   const errorLogs: string[] = [];
 
-  for (const endpoint of endpointsToTry) {
+  for (const endpoint of candidateUrls) {
     try {
       const response = await fetch(endpoint, {
         method: 'GET',
-        headers: {
-          'x-api-key': 'TokenRahasia2026',
-          'Accept': 'application/json',
-        },
+        headers,
         cache: 'no-store',
+        signal,
       });
 
       if (!response.ok) {
@@ -71,12 +80,11 @@ export async function fetchSingleMT5Account(accountId: 1 | 2 = 1): Promise<MT5Ac
 
       const data = await response.json();
       
-      // Handle server-reported disconnection
       if (data.isConnected === false) {
         return {
           akun: data.akun || `Akun ${accountId}`,
           balance: Number(data.balance ?? data.saldo ?? 0),
-          equity: Number(data.equity ?? data.balance ?? 0),
+          equity: Number(data.equity ?? data.balance ?? data.saldo ?? 0),
           margin: Number(data.margin ?? 0),
           floating_pnl: Number(data.floating_pnl ?? data.floatingPnl ?? data.profit ?? 0),
           isConnected: false,
@@ -87,7 +95,7 @@ export async function fetchSingleMT5Account(accountId: 1 | 2 = 1): Promise<MT5Ac
       return {
         akun: data.akun || `Akun ${accountId}`,
         balance: Number(data.balance ?? data.saldo ?? 0),
-        equity: Number(data.equity ?? data.balance ?? 0),
+        equity: Number(data.equity ?? data.balance ?? data.saldo ?? 0),
         margin: Number(data.margin ?? 0),
         floating_pnl: Number(data.floating_pnl ?? data.floatingPnl ?? data.profit ?? 0),
         lastUpdated: new Date().toLocaleTimeString('id-ID'),
@@ -95,8 +103,7 @@ export async function fetchSingleMT5Account(accountId: 1 | 2 = 1): Promise<MT5Ac
       };
     } catch (error: any) {
       if (error?.name === 'AbortError' || error?.message?.includes('aborted')) {
-        // Abort cancellation ignored silently
-        continue;
+        throw error;
       }
       console.error("Fetch API Error: ", error);
       const rawDetail = error?.name
@@ -106,8 +113,6 @@ export async function fetchSingleMT5Account(accountId: 1 | 2 = 1): Promise<MT5Ac
     }
   }
 
-  // If all attempts failed, compile diagnostic error message
-  const primaryError = errorLogs.join(' \n') || 'Tidak dapat terhubung ke endpoint MT5';
   return {
     akun: `Akun ${accountId}`,
     balance: 0,
@@ -115,28 +120,54 @@ export async function fetchSingleMT5Account(accountId: 1 | 2 = 1): Promise<MT5Ac
     margin: 0,
     floating_pnl: 0,
     isConnected: false,
-    error: primaryError,
+    error: errorLogs.join(' \n') || 'Tidak dapat terhubung ke endpoint MT5',
   };
 }
 
 /**
- * Fetches both MT5 Account 1 and Account 2 simultaneously using Promise.all
+ * Fetches both MT5 Account 1 and Account 2 simultaneously using Promise.all,
+ * and calculates accumulated Total Equity & Balance.
  */
-export async function fetchBothMT5Accounts(): Promise<{
+export async function fetchBothMT5Accounts(signal?: AbortSignal): Promise<{
   account1: MT5AccountData;
   account2: MT5AccountData;
+  accumulated: {
+    totalEquity: number;
+    totalBalance: number;
+    totalMargin: number;
+    totalFloatingPnl: number;
+    lastUpdated: string;
+    isConnected: boolean;
+  };
 }> {
   const [account1, account2] = await Promise.all([
-    fetchSingleMT5Account(1),
-    fetchSingleMT5Account(2),
+    fetchSingleMT5Account(1, signal),
+    fetchSingleMT5Account(2, signal),
   ]);
 
-  return { account1, account2 };
+  const isAnyConnected = Boolean(account1.isConnected || account2.isConnected);
+  const totalEquity = (account1.isConnected ? account1.equity : 0) + (account2.isConnected ? account2.equity : 0);
+  const totalBalance = (account1.isConnected ? account1.balance : 0) + (account2.isConnected ? account2.balance : 0);
+  const totalMargin = (account1.isConnected ? account1.margin : 0) + (account2.isConnected ? account2.margin : 0);
+  const totalFloatingPnl = (account1.isConnected ? account1.floating_pnl : 0) + (account2.isConnected ? account2.floating_pnl : 0);
+
+  return {
+    account1,
+    account2,
+    accumulated: {
+      totalEquity: Number(totalEquity.toFixed(2)),
+      totalBalance: Number(totalBalance.toFixed(2)),
+      totalMargin: Number(totalMargin.toFixed(2)),
+      totalFloatingPnl: Number(totalFloatingPnl.toFixed(2)),
+      lastUpdated: account1.lastUpdated || account2.lastUpdated || new Date().toLocaleTimeString('id-ID'),
+      isConnected: isAnyConnected,
+    },
+  };
 }
 
 /**
  * Legacy single fetch fallback
  */
-export async function fetchMT5AccountData(accountId: 1 | 2 = 1): Promise<MT5AccountData> {
-  return fetchSingleMT5Account(accountId);
+export async function fetchMT5AccountData(accountId: 1 | 2 = 1, signal?: AbortSignal): Promise<MT5AccountData> {
+  return fetchSingleMT5Account(accountId, signal);
 }

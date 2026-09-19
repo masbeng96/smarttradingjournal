@@ -1,14 +1,15 @@
 {
-  "version": "1.0.12",
-  "versionCode": 13,
+  "version": "1.0.13",
+  "versionCode": 14,
   "releaseDate": "2026-09-19",
   "minRequiredVersion": "1.0.0",
-  "title": "Trading Journal & Compound Planner Pro v1.0.12",
+  "title": "Trading Journal & Compound Planner Pro v1.0.13",
   "changelog": [
-    "Hapus logika AbortController dari fetch MT5 agar request jaringan selesai tanpa interupsi",
-    "Abaikan AbortError secara diam-diam tanpa memicu error di UI",
-    "Binding data balance, equity, margin, dan floating PnL dari JSON response ke state secara langsung"
+    "Routing URL Dinamis Capacitor: HTTP langsung di Android APK vs CORS Proxy di Web Preview HTTPS",
+    "Multi-Account Fetching via Promise.all untuk Akun 1 & 2 secara simultan",
+    "Akumulasi Total Equity & Saldo Multi-Akun ke UI secara real-time",
+    "Penanganan silent AbortError pada cleanup useEffect"
   ],
-  "downloadUrl": "https://github.com/masbeng96/smarttradingjournal/releases/download/v1.0.12/TradingJournal-v1.0.12.apk",
+  "downloadUrl": "https://github.com/masbeng96/smarttradingjournal/releases/download/v1.0.13/TradingJournal-v1.0.13.apk",
   "mandatory": false
 }

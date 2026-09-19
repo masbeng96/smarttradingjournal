@@ -101,26 +101,24 @@ export const OverviewDashboard: React.FC = () => {
               </span>
               
               {/* MT5 Status Badge */}
-              {assignedAccountId ? (
-                mt5Data?.isConnected ? (
-                  <div className="flex items-center space-x-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                    <span className="relative flex h-2 w-2">
-                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                      <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                    </span>
-                    <span>MT5 Live: Akun {assignedAccountId}</span>
-                  </div>
-                ) : isMT5Loading ? (
-                  <div className="flex items-center space-x-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                    <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
-                    <span>Syncing Akun {assignedAccountId}...</span>
-                  </div>
-                ) : mt5Error ? (
-                  <div className="flex items-center space-x-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-rose-500/20 text-rose-300 border border-rose-500/30">
-                    <WifiOff className="w-2.5 h-2.5" />
-                    <span>Akun {assignedAccountId} Offline</span>
-                  </div>
-                ) : null
+              {mt5Data?.isConnected ? (
+                <div className="flex items-center space-x-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                  </span>
+                  <span>{mt5Data.akun ? `MT5 Live: ${mt5Data.akun}` : 'MT5 Live Multi-Akun'}</span>
+                </div>
+              ) : isMT5Loading ? (
+                <div className="flex items-center space-x-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                  <span>Syncing MT5...</span>
+                </div>
+              ) : mt5Error ? (
+                <div className="flex items-center space-x-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-rose-500/20 text-rose-300 border border-rose-500/30">
+                  <WifiOff className="w-2.5 h-2.5" />
+                  <span>MT5 Offline</span>
+                </div>
               ) : (
                 <button
                   onClick={() => setIsAuthModalOpen(true)}
