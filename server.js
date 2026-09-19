@@ -25,11 +25,11 @@ app.get('/api/version', (req, res) => {
 });
 
 // Proxy for MT5 REST API endpoints (accounts 1 and 2)
-app.get('/api/mt5/account/:id?', async (req, res) => {
+app.get(['/api/mt5/account/:id?', '/api/account/:id?'], async (req, res) => {
+  const accountId = req.params.id || '1';
   try {
-    const accountId = req.params.id || '1';
     const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 6000);
+    const timeout = setTimeout(() => controller.abort(), 4000);
     const mt5Res = await fetch(`http://202.155.94.173/api/account/${accountId}`, {
       headers: {
         'x-api-key': 'TokenRahasia2026',
@@ -39,35 +39,31 @@ app.get('/api/mt5/account/:id?', async (req, res) => {
     });
     clearTimeout(timeout);
     if (!mt5Res.ok) {
-      return res.status(mt5Res.status).json({ error: 'MT5 Server returned ' + mt5Res.status });
+      return res.status(200).json({ 
+        akun: `Akun ${accountId}`,
+        balance: 0,
+        equity: 0,
+        margin: 0,
+        floating_pnl: 0,
+        isConnected: false,
+        error: `Server MT5 merespons HTTP ${mt5Res.status}`
+      });
     }
     const data = await mt5Res.json();
-    res.status(200).json(data);
-  } catch (err) {
-    res.status(502).json({ error: 'Failed to connect to MT5 endpoint: ' + (err.message || err) });
-  }
-});
-
-app.get('/api/account/:id', async (req, res) => {
-  try {
-    const accountId = req.params.id || '1';
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 6000);
-    const mt5Res = await fetch(`http://202.155.94.173/api/account/${accountId}`, {
-      headers: {
-        'x-api-key': 'TokenRahasia2026',
-        'Accept': 'application/json'
-      },
-      signal: controller.signal
+    res.status(200).json({
+      ...data,
+      isConnected: true,
     });
-    clearTimeout(timeout);
-    if (!mt5Res.ok) {
-      return res.status(mt5Res.status).json({ error: 'MT5 Server returned ' + mt5Res.status });
-    }
-    const data = await mt5Res.json();
-    res.status(200).json(data);
   } catch (err) {
-    res.status(502).json({ error: 'Failed to connect to MT5 endpoint: ' + (err.message || err) });
+    res.status(200).json({ 
+      akun: `Akun ${accountId}`,
+      balance: 0,
+      equity: 0,
+      margin: 0,
+      floating_pnl: 0,
+      isConnected: false,
+      error: 'Server MT5 (202.155.94.173) offline / tidak merespons'
+    });
   }
 });
 

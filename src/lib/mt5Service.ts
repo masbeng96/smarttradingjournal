@@ -28,13 +28,21 @@ export function getAssignedMT5AccountId(email?: string | null): (1 | 2) | null {
  */
 export async function fetchSingleMT5Account(accountId: 1 | 2 = 1): Promise<MT5AccountData> {
   const isNative = typeof Capacitor !== 'undefined' && Capacitor.isNativePlatform();
+  const isHttps = typeof window !== 'undefined' && window.location && window.location.protocol === 'https:';
 
   const directUrl = `${MT5_CONFIG.DIRECT_BASE}/${accountId}`;
   const proxyUrl = `${MT5_CONFIG.PROXY_BASE}/${accountId}`;
+  const directApiProxy = `/api/account/${accountId}`;
 
-  const endpointsToTry = isNative
-    ? [directUrl, proxyUrl]
-    : [proxyUrl, directUrl];
+  // On Web HTTPS, never request insecure HTTP direct URL to avoid browser Mixed Content blockage
+  let endpointsToTry: string[];
+  if (isNative) {
+    endpointsToTry = [directUrl, proxyUrl, directApiProxy];
+  } else if (isHttps) {
+    endpointsToTry = [proxyUrl, directApiProxy];
+  } else {
+    endpointsToTry = [proxyUrl, directApiProxy, directUrl];
+  }
 
   const headers: Record<string, string> = {
     'x-api-key': MT5_CONFIG.API_KEY,
@@ -57,6 +65,20 @@ export async function fetchSingleMT5Account(accountId: 1 | 2 = 1): Promise<MT5Ac
 
       if (response.ok) {
         const data = await response.json();
+        
+        // Handle server-reported disconnection
+        if (data.isConnected === false) {
+          return {
+            akun: data.akun || `Akun ${accountId}`,
+            balance: Number(data.balance ?? 0),
+            equity: Number(data.equity ?? 0),
+            margin: Number(data.margin ?? 0),
+            floating_pnl: Number(data.floating_pnl ?? 0),
+            isConnected: false,
+            error: data.error || 'Server MT5 tidak merespons',
+          };
+        }
+
         return {
           akun: data.akun || `Akun ${accountId}`,
           balance: Number(data.balance ?? 0),
@@ -80,7 +102,7 @@ export async function fetchSingleMT5Account(accountId: 1 | 2 = 1): Promise<MT5Ac
     margin: 0,
     floating_pnl: 0,
     isConnected: false,
-    error: `Gagal memuat Akun ${accountId}`,
+    error: `Server MT5 (202.155.94.173) offline`,
   };
 }
 
