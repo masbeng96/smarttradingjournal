@@ -500,6 +500,27 @@ export const JournalProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setTrades(prev => [newTrade, ...prev]);
     syncSaveTrade(newTrade, firebaseConfig, userProfile?.uid);
 
+    // Notification Alerts based on user settings
+    if (tradeData.outcome === 'OPEN') {
+      if (settings.notifyOnTradeOpened !== false) {
+        addNotification({
+          title: `⚡ Trade Baru Dibuka: ${tradeData.pair}`,
+          message: `Posisi ${tradeData.direction} ${tradeData.lotSize} lot pada harga ${tradeData.entryPrice}. SL: ${tradeData.stopLoss || '-'}, TP: ${tradeData.takeProfit || '-'}`,
+          type: 'RULE_ALERT',
+          data: newTrade,
+        });
+      }
+    } else {
+      if (settings.notifyOnTradeClosed !== false) {
+        addNotification({
+          title: `🏁 Trade Selesai: ${tradeData.pair} (${tradeData.outcome})`,
+          message: `Hasil ${tradeData.outcome}: ${tradeData.pnl >= 0 ? '+' : ''}${tradeData.pnl} ${settings.currency}.`,
+          type: tradeData.outcome === 'WIN' ? 'TARGET_REACHED' : 'RULE_ALERT',
+          data: newTrade,
+        });
+      }
+    }
+
     if (tradeData.outcome === 'WIN') {
       playWinSound();
       confetti({
@@ -508,8 +529,22 @@ export const JournalProvider: React.FC<{ children: React.ReactNode }> = ({ child
         origin: { y: 0.7 },
         colors: ['#10b981', '#06b6d4', '#fbbf24']
       });
+      if (settings.notifyOnTakeProfitHit !== false && tradeData.takeProfit) {
+        addNotification({
+          title: `🎯 Level Take Profit Tercapai: ${tradeData.pair}`,
+          message: `Selamat! Target TP ${tradeData.takeProfit} berhasil tersentuh (+${tradeData.pnl} ${settings.currency}).`,
+          type: 'TARGET_REACHED',
+        });
+      }
     } else if (tradeData.outcome === 'LOSS') {
       playWarningSound();
+      if (settings.notifyOnStopLossHit !== false && tradeData.stopLoss) {
+        addNotification({
+          title: `🛑 Level Stop Loss Tersentuh: ${tradeData.pair}`,
+          message: `Posisi menyentuh batas risiko SL ${tradeData.stopLoss}. Tetap disiplin dengan risk plan!`,
+          type: 'RISK_WARNING',
+        });
+      }
     }
 
     // Check if Milestone Step-Up or Step-Down occurred
@@ -533,6 +568,32 @@ export const JournalProvider: React.FC<{ children: React.ReactNode }> = ({ child
       if (t.id === id) {
         const updated = { ...t, ...updateData };
         syncSaveTrade(updated, firebaseConfig, userProfile?.uid);
+
+        // Check if trade transitioned from OPEN to CLOSED
+        if (t.outcome === 'OPEN' && updateData.outcome && updateData.outcome !== 'OPEN') {
+          if (settings.notifyOnTradeClosed !== false) {
+            addNotification({
+              title: `🏁 Trade Selesai: ${updated.pair} (${updated.outcome})`,
+              message: `Hasil: ${updated.pnl >= 0 ? '+' : ''}${updated.pnl} ${settings.currency} (${updated.outcome})`,
+              type: updated.outcome === 'WIN' ? 'TARGET_REACHED' : 'RULE_ALERT',
+            });
+          }
+          if (updated.outcome === 'WIN' && settings.notifyOnTakeProfitHit !== false) {
+            addNotification({
+              title: `🎯 Level Take Profit Tercapai: ${updated.pair}`,
+              message: `Posisi ${updated.pair} berhasil menyentuh target profit! (+${updated.pnl} ${settings.currency})`,
+              type: 'TARGET_REACHED',
+            });
+          }
+          if (updated.outcome === 'LOSS' && settings.notifyOnStopLossHit !== false) {
+            addNotification({
+              title: `🛑 Level Stop Loss Tersentuh: ${updated.pair}`,
+              message: `Posisi ${updated.pair} ditutup pada batas risiko SL. Disiplin terjaga!`,
+              type: 'RISK_WARNING',
+            });
+          }
+        }
+
         return updated;
       }
       return t;

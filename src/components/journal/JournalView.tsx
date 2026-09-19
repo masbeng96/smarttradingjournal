@@ -17,7 +17,15 @@ import {
 } from 'lucide-react';
 
 export const JournalView: React.FC = () => {
-  const { trades, deleteTrade, settings, setIsNewTradeModalOpen, currentEquity } = useJournal();
+  const { 
+    trades, 
+    deleteTrade, 
+    settings, 
+    setIsNewTradeModalOpen, 
+    currentEquity, 
+    userProfile, 
+    setIsAuthModalOpen 
+  } = useJournal();
 
   const [filterPair, setFilterPair] = useState<string>('ALL');
   const [filterOutcome, setFilterOutcome] = useState<string>('ALL');
@@ -50,17 +58,26 @@ export const JournalView: React.FC = () => {
             <span>Jurnal Entry Trading</span>
           </h2>
           <p className="text-xs text-slate-400">
-            {trades.length} Total trade tercatat
+            {trades.length} Total trade tercatat {userProfile ? '(Live MT5 Sync)' : '(Mode Tamu)'}
           </p>
         </div>
 
-        <button
-          onClick={() => setIsNewTradeModalOpen(true)}
-          className="px-3 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs transition-all flex items-center space-x-1 shadow-glow-emerald"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Tambah Trade</span>
-        </button>
+        {userProfile ? (
+          <button
+            onClick={() => setIsNewTradeModalOpen(true)}
+            className="px-3 py-1.5 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs transition-all flex items-center space-x-1 shadow-glow-emerald"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Tambah Trade</span>
+          </button>
+        ) : (
+          <button
+            onClick={() => setIsAuthModalOpen(true)}
+            className="px-3 py-1.5 rounded-xl bg-gradient-to-r from-emerald-500/20 to-cyan-500/20 hover:from-emerald-500/30 hover:to-cyan-500/30 border border-emerald-500/30 text-emerald-300 font-bold text-xs transition-all flex items-center space-x-1"
+          >
+            <span>Masuk Akun</span>
+          </button>
+        )}
       </div>
 
       {/* Filter & Search Bar */}

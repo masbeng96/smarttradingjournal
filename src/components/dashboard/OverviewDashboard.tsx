@@ -260,34 +260,33 @@ export const OverviewDashboard: React.FC = () => {
       </div>
 
       {/* 2.5 Quick Forex Factory Economic Calendar Banner */}
-      <div 
-        onClick={() => setActiveTab('calendar')}
-        className="rounded-2xl p-3.5 bg-gradient-to-r from-[#0a1526] via-slate-900 to-[#07131e] border border-cyan-500/30 flex items-center justify-between cursor-pointer hover:border-cyan-500/50 transition-all shadow-sm group"
-      >
-        <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 rounded-xl bg-cyan-500/20 border border-cyan-500/30 flex items-center justify-center text-cyan-400 group-hover:scale-105 transition-transform">
-            <CalendarDays className="w-5 h-5" />
-          </div>
-          <div>
-            <div className="text-xs font-bold text-slate-200 flex items-center space-x-1.5">
-              <span>Kalender Berita Ekonomi</span>
-              <span className="text-[9px] font-extrabold px-1.5 py-0.2 rounded bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">
-                LIVE FF
-              </span>
-            </div>
-            <div className="text-[11px] text-slate-400">
-              Pantau rilis data High-Impact (CPI, FOMC, NFP)
-            </div>
-          </div>
-        </div>
-        <button
-          onClick={(e) => { e.stopPropagation(); setActiveTab('calendar'); }}
-          className="px-3 py-1.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/30 text-cyan-300 text-xs font-bold transition-all flex items-center space-x-1"
+      {settings.showEconomicCalendarBanner !== false && (
+        <div 
+          onClick={() => setActiveTab('calendar')}
+          className="rounded-2xl p-3.5 bg-gradient-to-r from-[#0a1526] via-slate-900 to-[#07131e] border border-cyan-500/30 flex items-center justify-between cursor-pointer hover:border-cyan-500/50 transition-all shadow-sm group"
         >
-          <span>Buka</span>
-          <ChevronRight className="w-3.5 h-3.5" />
-        </button>
-      </div>
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 rounded-xl bg-cyan-500/20 border border-cyan-500/30 flex items-center justify-center text-cyan-400 group-hover:scale-105 transition-transform">
+              <CalendarDays className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="text-xs font-bold text-slate-200 flex items-center space-x-1.5">
+                <span>Kalender Berita Ekonomi</span>
+              </div>
+              <div className="text-[11px] text-slate-400">
+                Pantau rilis data High-Impact (CPI, FOMC, NFP)
+              </div>
+            </div>
+          </div>
+          <button
+            onClick={(e) => { e.stopPropagation(); setActiveTab('calendar'); }}
+            className="px-3 py-1.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/30 text-cyan-300 text-xs font-bold transition-all flex items-center space-x-1"
+          >
+            <span>Buka</span>
+            <ChevronRight className="w-3.5 h-3.5" />
+          </button>
+        </div>
+      )}
 
       {/* 3. Monthly Recurring Deposit Schedule Card */}
       {settings.depositEnabled && (
@@ -429,15 +428,27 @@ export const OverviewDashboard: React.FC = () => {
         </div>
 
         {recentTrades.length === 0 ? (
-          <div className="rounded-2xl p-6 bg-slate-900/40 border border-slate-800 text-center space-y-2">
-            <div className="text-slate-400 text-xs">Belum ada trade yang dicatat.</div>
-            <button
-              onClick={() => setIsNewTradeModalOpen(true)}
-              className="px-4 py-2 rounded-xl bg-emerald-500 text-slate-950 font-bold text-xs hover:bg-emerald-400 transition-all inline-flex items-center space-x-1.5"
-            >
-              <ArrowUpRight className="w-3.5 h-3.5" />
-              <span>Catat Entry Pertama</span>
-            </button>
+          <div className="rounded-2xl p-6 bg-slate-900/40 border border-slate-800 text-center space-y-2.5">
+            <div className="text-slate-400 text-xs">
+              {userProfile ? 'Belum ada trade yang dicatat.' : 'Mode Tamu: Masuk ke akun Anda untuk menyinkronkan data trade live MT5.'}
+            </div>
+            {userProfile ? (
+              <button
+                onClick={() => setIsNewTradeModalOpen(true)}
+                className="px-4 py-2 rounded-xl bg-emerald-500 text-slate-950 font-bold text-xs hover:bg-emerald-400 transition-all inline-flex items-center space-x-1.5"
+              >
+                <ArrowUpRight className="w-3.5 h-3.5" />
+                <span>Catat Entry Pertama</span>
+              </button>
+            ) : (
+              <button
+                onClick={() => setIsAuthModalOpen(true)}
+                className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-500 text-slate-950 font-bold text-xs hover:from-emerald-400 hover:to-cyan-400 transition-all inline-flex items-center space-x-1.5 shadow-glow-emerald"
+              >
+                <ArrowUpRight className="w-3.5 h-3.5" />
+                <span>Masuk ke Akun Trader</span>
+              </button>
+            )}
           </div>
         ) : (
           <div className="space-y-2">

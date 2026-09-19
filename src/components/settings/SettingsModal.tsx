@@ -250,7 +250,7 @@ export const SettingsModal: React.FC = () => {
               </div>
               <button
                 onClick={() => logout()}
-                className="px-3 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 text-xs font-semibold flex items-center space-x-1.5 transition-colors"
+                className="px-3 py-1.5 rounded-xl bg-rose-500/10 hover:bg-rose-500/20 text-rose-400 border border-rose-500/30 text-xs font-semibold flex items-center space-x-1.5 transition-colors cursor-pointer"
               >
                 <LogOut className="w-3.5 h-3.5" />
                 <span>Keluar</span>
@@ -259,7 +259,7 @@ export const SettingsModal: React.FC = () => {
           ) : (
             <div className="space-y-2 pt-1">
               <p className="text-[11px] text-slate-400">
-                Masuk atau buat akun untuk menyinkronkan jurnal trading dan target compound Anda di semua perangkat secara otomatis.
+                Masuk atau buat akun untuk menyinkronkan jurnal trading dan data MT5 Anda secara real-time.
               </p>
               <button
                 onClick={() => {
@@ -273,6 +273,110 @@ export const SettingsModal: React.FC = () => {
               </button>
             </div>
           )}
+        </div>
+
+        {/* Tampilan Overview & Banner */}
+        <div className="p-3.5 rounded-2xl bg-slate-900 border border-slate-800 space-y-3 text-xs">
+          <div className="flex items-center justify-between">
+            <span className="font-bold text-white flex items-center space-x-1.5">
+              <Globe className="w-4 h-4 text-cyan-400" />
+              <span>Tampilan Overview</span>
+            </span>
+          </div>
+
+          <div className="flex items-center justify-between pt-1">
+            <div>
+              <div className="text-xs font-semibold text-slate-200">Banner Kalender Berita</div>
+              <div className="text-[10px] text-slate-400">Tampilkan quick-banner Forex Factory di dashboard utama</div>
+            </div>
+            <button
+              type="button"
+              onClick={() => updateSettings({ showEconomicCalendarBanner: settings.showEconomicCalendarBanner === false ? true : false })}
+              className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors ${
+                settings.showEconomicCalendarBanner !== false ? 'bg-emerald-500 justify-end' : 'bg-slate-800 justify-start'
+              }`}
+            >
+              <div className="w-4 h-4 rounded-full bg-white shadow-md"></div>
+            </button>
+          </div>
+        </div>
+
+        {/* Pengaturan Notifikasi Trading Alert */}
+        <div className="p-3.5 rounded-2xl bg-slate-900 border border-slate-800 space-y-3 text-xs">
+          <span className="font-bold text-white flex items-center space-x-1.5">
+            <Sparkles className="w-4 h-4 text-amber-400" />
+            <span>Pengaturan Notifikasi Alert Trading</span>
+          </span>
+
+          <div className="space-y-2.5 pt-1">
+            {/* 1. Trade Dibuka */}
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-xs font-semibold text-slate-200">Trade Baru Dibuka</div>
+                <div className="text-[10px] text-slate-400">Notifikasi saat posisi open entry tercatat</div>
+              </div>
+              <button
+                type="button"
+                onClick={() => updateSettings({ notifyOnTradeOpened: settings.notifyOnTradeOpened === false ? true : false })}
+                className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors ${
+                  settings.notifyOnTradeOpened !== false ? 'bg-emerald-500 justify-end' : 'bg-slate-800 justify-start'
+                }`}
+              >
+                <div className="w-4 h-4 rounded-full bg-white shadow-md"></div>
+              </button>
+            </div>
+
+            {/* 2. Trade Ditutup */}
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-xs font-semibold text-slate-200">Trade Ditutup / Selesai</div>
+                <div className="text-[10px] text-slate-400">Notifikasi saat posisi closed (Win / Loss / BE)</div>
+              </div>
+              <button
+                type="button"
+                onClick={() => updateSettings({ notifyOnTradeClosed: settings.notifyOnTradeClosed === false ? true : false })}
+                className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors ${
+                  settings.notifyOnTradeClosed !== false ? 'bg-emerald-500 justify-end' : 'bg-slate-800 justify-start'
+                }`}
+              >
+                <div className="w-4 h-4 rounded-full bg-white shadow-md"></div>
+              </button>
+            </div>
+
+            {/* 3. Stop Loss Hit */}
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-xs font-semibold text-slate-200">Level Stop Loss Tersentuh</div>
+                <div className="text-[10px] text-slate-400">Peringatan alert saat harga menyentuh batas SL</div>
+              </div>
+              <button
+                type="button"
+                onClick={() => updateSettings({ notifyOnStopLossHit: settings.notifyOnStopLossHit === false ? true : false })}
+                className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors ${
+                  settings.notifyOnStopLossHit !== false ? 'bg-emerald-500 justify-end' : 'bg-slate-800 justify-start'
+                }`}
+              >
+                <div className="w-4 h-4 rounded-full bg-white shadow-md"></div>
+              </button>
+            </div>
+
+            {/* 4. Take Profit Hit */}
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-xs font-semibold text-slate-200">Level Take Profit Tersentuh</div>
+                <div className="text-[10px] text-slate-400">Notifikasi selebrasi saat target TP tercapai</div>
+              </div>
+              <button
+                type="button"
+                onClick={() => updateSettings({ notifyOnTakeProfitHit: settings.notifyOnTakeProfitHit === false ? true : false })}
+                className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors ${
+                  settings.notifyOnTakeProfitHit !== false ? 'bg-emerald-500 justify-end' : 'bg-slate-800 justify-start'
+                }`}
+              >
+                <div className="w-4 h-4 rounded-full bg-white shadow-md"></div>
+              </button>
+            </div>
+          </div>
         </div>
 
         {/* Data Backup & Export / Import */}

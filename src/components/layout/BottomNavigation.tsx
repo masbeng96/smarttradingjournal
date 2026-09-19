@@ -33,7 +33,7 @@ const rightTabs: TabItem[] = [
 ];
 
 export const BottomNavigation: React.FC = () => {
-  const { activeTab, setActiveTab, setIsNewTradeModalOpen } = useJournal();
+  const { activeTab, setActiveTab, setIsNewTradeModalOpen, userProfile } = useJournal();
 
   const renderNavTab = (tab: TabItem) => {
     const Icon = tab.icon;
@@ -67,16 +67,18 @@ export const BottomNavigation: React.FC = () => {
           {/* Left Tabs */}
           {leftTabs.map(renderNavTab)}
 
-          {/* Center Action Button */}
-          <div className="relative -top-5 flex justify-center px-1">
-            <button
-              onClick={() => setIsNewTradeModalOpen(true)}
-              className="w-13 h-13 rounded-2xl bg-gradient-to-tr from-emerald-500 to-cyan-500 text-white p-3.5 shadow-glow-emerald hover:scale-105 active:scale-95 transition-all flex items-center justify-center group"
-              title="Catat Entry Trade Baru"
-            >
-              <PlusCircle className="w-6 h-6 text-[#070a12] stroke-[2.5]" />
-            </button>
-          </div>
+          {/* Center Action Button (Hanya untuk User yang Login) */}
+          {userProfile && (
+            <div className="relative -top-5 flex justify-center px-1">
+              <button
+                onClick={() => setIsNewTradeModalOpen(true)}
+                className="w-13 h-13 rounded-2xl bg-gradient-to-tr from-emerald-500 to-cyan-500 text-white p-3.5 shadow-glow-emerald hover:scale-105 active:scale-95 transition-all flex items-center justify-center group"
+                title="Catat Entry Trade Baru"
+              >
+                <PlusCircle className="w-6 h-6 text-[#070a12] stroke-[2.5]" />
+              </button>
+            </div>
+          )}
 
           {/* Right Tabs */}
           {rightTabs.map(renderNavTab)}

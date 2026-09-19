@@ -68,7 +68,7 @@ export const MobileFrame: React.FC<MobileFrameProps> = ({ children }) => {
           )}
 
           {/* Render Actual App Content */}
-          <div className="flex-1 flex flex-col w-full overflow-y-auto pb-28">
+          <div className="flex-1 flex flex-col w-full h-full overflow-hidden">
             {children}
           </div>
         </div>

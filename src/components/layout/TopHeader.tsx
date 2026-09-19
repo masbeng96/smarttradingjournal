@@ -36,7 +36,7 @@ export const TopHeader: React.FC = () => {
   };
 
   return (
-    <header className="sticky top-0 z-30 w-full px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-3 bg-[#070a12]/95 backdrop-blur-xl border-b border-slate-800/60 flex items-center justify-between">
+    <header className="sticky top-0 z-40 shrink-0 w-full px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3 bg-[#070a12]/95 backdrop-blur-xl border-b border-slate-800/60 flex items-center justify-between shadow-sm">
       {/* Brand & App Title */}
       <div className="flex items-center space-x-2.5">
         <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-emerald-500 to-cyan-500 p-0.5 shadow-glow-emerald flex items-center justify-center shrink-0">

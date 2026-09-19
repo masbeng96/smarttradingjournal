@@ -40,6 +40,15 @@ export interface PlanSettings {
   autoLotCompounding: boolean;       // Auto scale lot as equity grows
   stepUpEquityMultiplier: number;    // e.g. 1.2 (every 20% equity increase -> step up)
   stepDownDrawdownThreshold: number; // e.g. 5% drawdown -> step down lot
+
+  // Display & UI Preferences
+  showEconomicCalendarBanner?: boolean; // Tampilkan Banner Kalender Berita di Overview
+
+  // Notification Alerts Preferences
+  notifyOnTradeOpened?: boolean;        // Notifikasi saat trade baru dibuka
+  notifyOnTradeClosed?: boolean;        // Notifikasi saat trade ditutup
+  notifyOnStopLossHit?: boolean;        // Notifikasi saat level Stop Loss tersentuh
+  notifyOnTakeProfitHit?: boolean;      // Notifikasi saat level Take Profit tersentuh
 }
 
 export interface TradeEntry {
@@ -117,7 +126,7 @@ export interface AppNotification {
   title: string;
   message: string;
   timestamp: string;
-  type: 'ANALYSIS_5AM' | 'STEP_UP' | 'STEP_DOWN' | 'RISK_WARNING' | 'TARGET_REACHED' | 'UPDATE_AVAILABLE';
+  type: 'ANALYSIS_5AM' | 'STEP_UP' | 'STEP_DOWN' | 'RISK_WARNING' | 'TARGET_REACHED' | 'UPDATE_AVAILABLE' | 'TRADE_ALERT' | 'RULE_ALERT';
   read: boolean;
   data?: any;
 }

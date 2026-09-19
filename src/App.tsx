@@ -21,10 +21,10 @@ const MainContent: React.FC = () => {
   const { activeTab } = useJournal();
 
   return (
-    <div className="flex-1 flex flex-col">
+    <div className="flex-1 flex flex-col h-full overflow-hidden relative">
       <TopHeader />
 
-      <div className="flex-1 overflow-y-auto">
+      <div className="flex-1 overflow-y-auto overscroll-contain pb-28">
         <AnimatePresence mode="wait">
           <motion.div
             key={activeTab}

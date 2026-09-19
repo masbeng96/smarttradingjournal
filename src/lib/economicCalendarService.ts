@@ -1,11 +1,15 @@
+import { Capacitor } from '@capacitor/core';
 import { EconomicEvent, NewsImpact } from '../types/journal';
 
 const STORAGE_KEY_CALENDAR = 'trading_journal_economic_calendar_cache_v1';
 const CACHE_TTL_MS = 10 * 60 * 1000; // 10 minutes cache
+export const CLOUD_BACKEND_ORIGIN = 'https://smarttrading-app-1019478115925.asia-southeast2.run.app';
 
 export const CALENDAR_ENDPOINTS = {
   PROXY_THIS_WEEK: '/api/calendar/thisweek',
   PROXY_NEXT_WEEK: '/api/calendar/nextweek',
+  CLOUD_THIS_WEEK: `${CLOUD_BACKEND_ORIGIN}/api/calendar/thisweek`,
+  CLOUD_NEXT_WEEK: `${CLOUD_BACKEND_ORIGIN}/api/calendar/nextweek`,
   DIRECT_THIS_WEEK: 'https://nfs.faireconomy.media/ff_calendar_thisweek.json',
   DIRECT_NEXT_WEEK: 'https://nfs.faireconomy.media/ff_calendar_nextweek.json',
 };
@@ -115,11 +119,16 @@ export async function fetchEconomicCalendar(period: 'thisweek' | 'nextweek' = 't
     }
   }
 
-  // 2. Determine endpoints to try (proxy first, then direct CDN)
+  // 2. Determine endpoints to try (Cloud proxy, relative proxy, direct CDN)
+  const isNative = typeof Capacitor !== 'undefined' && Capacitor.isNativePlatform();
+  const cloudUrl = period === 'thisweek' ? CALENDAR_ENDPOINTS.CLOUD_THIS_WEEK : CALENDAR_ENDPOINTS.CLOUD_NEXT_WEEK;
   const proxyUrl = period === 'thisweek' ? CALENDAR_ENDPOINTS.PROXY_THIS_WEEK : CALENDAR_ENDPOINTS.PROXY_NEXT_WEEK;
   const directUrl = period === 'thisweek' ? CALENDAR_ENDPOINTS.DIRECT_THIS_WEEK : CALENDAR_ENDPOINTS.DIRECT_NEXT_WEEK;
 
-  const urlsToTry = [proxyUrl, directUrl];
+  const urlsToTry = isNative
+    ? [cloudUrl, directUrl, proxyUrl]
+    : [proxyUrl, cloudUrl, directUrl];
+
   let rawData: any[] | null = null;
 
   for (const url of urlsToTry) {

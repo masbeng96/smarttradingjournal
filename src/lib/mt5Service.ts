@@ -1,9 +1,12 @@
 import { Capacitor } from '@capacitor/core';
 import { MT5AccountData } from '../types/journal';
 
+export const CLOUD_BACKEND_ORIGIN = 'https://smarttrading-app-1019478115925.asia-southeast2.run.app';
+
 export const MT5_CONFIG = {
   DIRECT_BASE: 'http://202.155.94.173/api/account',
   PROXY_BASE: '/api/mt5/account',
+  CLOUD_PROXY_BASE: `${CLOUD_BACKEND_ORIGIN}/api/mt5/account`,
   API_KEY: 'TokenRahasia2026',
   POLL_INTERVAL_MS: 5000,
   REQUEST_TIMEOUT_MS: 5000,
@@ -31,17 +34,21 @@ export async function fetchSingleMT5Account(accountId: 1 | 2 = 1): Promise<MT5Ac
   const isHttps = typeof window !== 'undefined' && window.location && window.location.protocol === 'https:';
 
   const directUrl = `${MT5_CONFIG.DIRECT_BASE}/${accountId}`;
-  const proxyUrl = `${MT5_CONFIG.PROXY_BASE}/${accountId}`;
+  const relativeProxyUrl = `${MT5_CONFIG.PROXY_BASE}/${accountId}`;
+  const cloudProxyUrl = `${MT5_CONFIG.CLOUD_PROXY_BASE}/${accountId}`;
   const directApiProxy = `/api/account/${accountId}`;
+  const cloudDirectProxy = `${CLOUD_BACKEND_ORIGIN}/api/account/${accountId}`;
 
-  // On Web HTTPS, never request insecure HTTP direct URL to avoid browser Mixed Content blockage
   let endpointsToTry: string[];
   if (isNative) {
-    endpointsToTry = [directUrl, proxyUrl, directApiProxy];
+    // On Native Android WebView: direct cleartext HTTP first, then full Cloud Run proxy
+    endpointsToTry = [directUrl, cloudProxyUrl, cloudDirectProxy];
   } else if (isHttps) {
-    endpointsToTry = [proxyUrl, directApiProxy];
+    // On Web HTTPS: relative proxies to avoid Mixed Content
+    endpointsToTry = [relativeProxyUrl, directApiProxy, cloudProxyUrl];
   } else {
-    endpointsToTry = [proxyUrl, directApiProxy, directUrl];
+    // On Web HTTP (localhost):
+    endpointsToTry = [relativeProxyUrl, directApiProxy, directUrl, cloudProxyUrl];
   }
 
   const headers: Record<string, string> = {

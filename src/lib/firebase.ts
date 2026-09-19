@@ -106,6 +106,11 @@ export const DEFAULT_PLAN_SETTINGS: PlanSettings = {
   autoLotCompounding: true,
   stepUpEquityMultiplier: 1.25,
   stepDownDrawdownThreshold: 5,
+  showEconomicCalendarBanner: true,
+  notifyOnTradeOpened: true,
+  notifyOnTradeClosed: true,
+  notifyOnStopLossHit: true,
+  notifyOnTakeProfitHit: true,
 };
 
 // Local Accounts Registry Key
