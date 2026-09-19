@@ -13,6 +13,23 @@ export default defineConfig({
   server: {
     port: 3000,
     host: true,
+    proxy: {
+      '/api/mt5/account': {
+        target: 'http://202.155.94.173',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/mt5\/account/, '/api/account/1'),
+        headers: {
+          'x-api-key': 'TokenRahasia2026',
+        },
+      },
+      '/api/account': {
+        target: 'http://202.155.94.173',
+        changeOrigin: true,
+        headers: {
+          'x-api-key': 'TokenRahasia2026',
+        },
+      },
+    },
   },
   build: {
     outDir: 'dist',
