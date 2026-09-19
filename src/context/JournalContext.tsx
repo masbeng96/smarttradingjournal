@@ -6,7 +6,8 @@ import {
   AppNotification, 
   FirebaseConfigState,
   AppVersionInfo,
-  UserProfile
+  UserProfile,
+  MT5AccountData
 } from '../types/journal';
 import { 
   DEFAULT_PLAN_SETTINGS, 
@@ -25,6 +26,7 @@ import {
   logoutFirebaseUser,
   subscribeAuthState
 } from '../lib/firebase';
+import { fetchMT5AccountData, MT5_CONFIG } from '../lib/mt5Service';
 import { generateDailyCoachingReport, isFiveAmAnalysisDue } from '../lib/dailyAnalysisEngine';
 import { calculateRecommendedLot, generateLotMilestoneLadder } from '../lib/lotCalculator';
 import { checkForAppUpdates, CURRENT_APP_VERSION } from '../lib/updaterService';
@@ -40,6 +42,12 @@ interface JournalContextType {
   deleteTrade: (id: string) => void;
   updateTrade: (id: string, trade: Partial<TradeEntry>) => void;
   
+  // MT5 Real-time Data
+  mt5Data: MT5AccountData | null;
+  isMT5Loading: boolean;
+  mt5Error: string | null;
+  refreshMT5Data: () => Promise<void>;
+
   // Dynamic stats & equity
   currentEquity: number;
   totalRealizedPnl: number;
@@ -157,11 +165,36 @@ export const JournalProvider: React.FC<{ children: React.ReactNode }> = ({ child
   });
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
 
-  // 6. Firebase Config
+  // 6. MT5 Real-time Account State
+  const [mt5Data, setMt5Data] = useState<MT5AccountData | null>(null);
+  const [isMT5Loading, setIsMT5Loading] = useState<boolean>(false);
+  const [mt5Error, setMt5Error] = useState<string | null>(null);
+
+  const refreshMT5Data = async () => {
+    setIsMT5Loading(true);
+    try {
+      const data = await fetchMT5AccountData();
+      setMt5Data(data);
+      setMt5Error(null);
+    } catch (err: any) {
+      setMt5Error(err.message || 'Gagal memuat data MT5');
+    } finally {
+      setIsMT5Loading(false);
+    }
+  };
+
+  // Poll MT5 Real-time data on mount and interval
+  useEffect(() => {
+    refreshMT5Data();
+    const interval = setInterval(refreshMT5Data, MT5_CONFIG.POLL_INTERVAL_MS);
+    return () => clearInterval(interval);
+  }, []);
+
+  // 7. Firebase Config
   const [firebaseConfig, setFirebaseConfig] = useState<FirebaseConfigState>(getStoredFirebaseConfig);
   const [isCloudConnected, setIsCloudConnected] = useState<boolean>(false);
 
-  // 7. UI Navigation & Frame states
+  // 8. UI Navigation & Frame states
   const [activeTab, setActiveTab] = useState<'dashboard' | 'planner' | 'journal' | 'risk' | 'coaching'>('dashboard');
   const [isMobileDeviceFrame, setIsMobileDeviceFrame] = useState<boolean>(true);
   const [isNewTradeModalOpen, setIsNewTradeModalOpen] = useState<boolean>(false);
@@ -169,11 +202,11 @@ export const JournalProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [isNotificationDrawerOpen, setIsNotificationDrawerOpen] = useState<boolean>(false);
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState<boolean>(false);
 
-  // 8. Update Engine State
+  // 9. Update Engine State
   const [updateAvailable, setUpdateAvailable] = useState<boolean>(false);
   const [latestVersion, setLatestVersion] = useState<AppVersionInfo | null>(null);
 
-  // 9. Onboarding State (First install on Android/Web)
+  // 10. Onboarding State (First install on Android/Web)
   const [hasOnboarded, setHasOnboarded] = useState<boolean>(() => {
     try {
       return localStorage.getItem('trading_journal_has_onboarded_v1') === 'true';
@@ -217,8 +250,6 @@ export const JournalProvider: React.FC<{ children: React.ReactNode }> = ({ child
         }
         setUserProfile(profile);
         localStorage.setItem(STORAGE_KEYS.USER_PROFILE, JSON.stringify(profile));
-      } else {
-        // If not logged in, retain local profile if present or set to null
       }
     });
 
@@ -319,7 +350,7 @@ export const JournalProvider: React.FC<{ children: React.ReactNode }> = ({ child
     });
   }, []);
 
-  // Calculate current dynamic equity
+  // Calculate current dynamic equity (bonds live MT5 equity if available and non-zero)
   const totalRealizedPnl = useMemo(() => {
     return trades
       .filter(t => t.outcome !== 'OPEN')
@@ -327,8 +358,11 @@ export const JournalProvider: React.FC<{ children: React.ReactNode }> = ({ child
   }, [trades]);
 
   const currentEquity = useMemo(() => {
+    if (mt5Data && mt5Data.isConnected) {
+      return Number(((mt5Data.equity !== undefined && mt5Data.equity !== null) ? mt5Data.equity : mt5Data.balance ?? 0).toFixed(2));
+    }
     return Math.max(0, Number((settings.initialCapital + totalRealizedPnl).toFixed(2)));
-  }, [settings.initialCapital, totalRealizedPnl]);
+  }, [settings.initialCapital, totalRealizedPnl, mt5Data]);
 
   // Win Rate and stats
   const { winRate, profitFactor } = useMemo(() => {
@@ -502,6 +536,10 @@ export const JournalProvider: React.FC<{ children: React.ReactNode }> = ({ child
       addTrade,
       deleteTrade,
       updateTrade,
+      mt5Data,
+      isMT5Loading,
+      mt5Error,
+      refreshMT5Data,
       currentEquity,
       totalRealizedPnl,
       winRate,

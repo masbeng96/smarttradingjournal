@@ -143,6 +143,17 @@ export interface UserProfile {
   joinedDate?: string;
 }
 
+export interface MT5AccountData {
+  akun: string;
+  balance: number;
+  equity: number;
+  margin: number;
+  floating_pnl: number;
+  lastUpdated?: string;
+  isConnected?: boolean;
+  error?: string;
+}
+
 export interface AppVersionInfo {
   version: string;
   versionCode: number;

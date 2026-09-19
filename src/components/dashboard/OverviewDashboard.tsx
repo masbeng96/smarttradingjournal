@@ -11,7 +11,10 @@ import {
   Sparkles,
   Zap,
   ChevronRight,
-  BookOpen
+  BookOpen,
+  RotateCcw,
+  Activity,
+  WifiOff
 } from 'lucide-react';
 import { 
   ResponsiveContainer, 
@@ -33,7 +36,11 @@ export const OverviewDashboard: React.FC = () => {
     trades, 
     latestReport, 
     setActiveTab,
-    setIsNewTradeModalOpen 
+    setIsNewTradeModalOpen,
+    mt5Data,
+    isMT5Loading,
+    mt5Error,
+    refreshMT5Data
   } = useJournal();
 
   const growthPercent = settings.initialCapital > 0 
@@ -74,47 +81,126 @@ export const OverviewDashboard: React.FC = () => {
 
   return (
     <div className="p-4 space-y-4">
-      {/* 1. Hero Balance & Equity Card */}
+      {/* 1. Hero Balance & MT5 Live Sync Card */}
       <div className="relative overflow-hidden rounded-3xl p-5 bg-gradient-to-br from-slate-900 via-[#0b1324] to-[#07131e] border border-emerald-500/20 shadow-glow-emerald">
         {/* Ambient Glows */}
         <div className="absolute -top-12 -right-12 w-36 h-36 bg-emerald-500/20 rounded-full blur-2xl pointer-events-none" />
         <div className="absolute -bottom-12 -left-12 w-36 h-36 bg-cyan-500/15 rounded-full blur-2xl pointer-events-none" />
 
-        <div className="relative z-10 space-y-3">
+        <div className="relative z-10 space-y-3.5">
+          {/* Header Bar with Live Indicator & Refresh */}
           <div className="flex items-center justify-between">
-            <span className="text-xs font-semibold uppercase tracking-wider text-slate-400">
-              Total Saldo Akun (Equity)
-            </span>
-            <div className={`flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-xs font-bold ${
-              growthPercent >= 0 
-                ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' 
-                : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
-            }`}>
-              {growthPercent >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-              <span>{formatPercent(growthPercent, 1)}</span>
+            <div className="flex items-center space-x-2">
+              <span className="text-xs font-bold uppercase tracking-wider text-slate-300">
+                Total Saldo Akun (Equity)
+              </span>
+              
+              {/* MT5 Status Badge */}
+              {mt5Data?.isConnected ? (
+                <div className="flex items-center space-x-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                  <span className="relative flex h-2 w-2">
+                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                  </span>
+                  <span>MT5 Live: {mt5Data.akun}</span>
+                </div>
+              ) : isMT5Loading ? (
+                <div className="flex items-center space-x-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                  <span>Syncing...</span>
+                </div>
+              ) : mt5Error ? (
+                <div className="flex items-center space-x-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-rose-500/20 text-rose-300 border border-rose-500/30">
+                  <WifiOff className="w-2.5 h-2.5" />
+                  <span>MT5 Offline</span>
+                </div>
+              ) : null}
+            </div>
+
+            <div className="flex items-center space-x-1.5">
+              <button
+                onClick={() => refreshMT5Data()}
+                disabled={isMT5Loading}
+                title="Refresh Data MT5 Real-Time"
+                className="p-1 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-white transition-all disabled:opacity-50"
+              >
+                <RotateCcw className={`w-3.5 h-3.5 ${isMT5Loading ? 'animate-spin text-emerald-400' : ''}`} />
+              </button>
+
+              <div className={`flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-xs font-bold ${
+                (mt5Data ? mt5Data.floating_pnl : growthPercent) >= 0 
+                  ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' 
+                  : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
+              }`}>
+                {(mt5Data ? mt5Data.floating_pnl : growthPercent) >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
+                <span>
+                  {mt5Data 
+                    ? `${mt5Data.floating_pnl >= 0 ? '+' : ''}${formatCurrency(mt5Data.floating_pnl, settings.currency)}`
+                    : formatPercent(growthPercent, 1)
+                  }
+                </span>
+              </div>
             </div>
           </div>
 
-          <div className="flex items-baseline space-x-2">
+          {/* Equity Main Number */}
+          <div className="flex items-baseline justify-between">
             <div className="text-3xl font-black font-mono-num tracking-tight text-white glow-text-emerald">
               {formatCurrency(currentEquity, settings.currency)}
             </div>
+            {mt5Data?.isConnected && (
+              <span className="text-[11px] text-emerald-400/90 font-mono-num font-semibold">
+                Auto-Sync Live 🟢
+              </span>
+            )}
           </div>
 
-          {/* Sub-info: Modal Awal & Total Net PnL */}
-          <div className="pt-2 border-t border-slate-800/80 grid grid-cols-2 gap-2 text-xs">
-            <div>
-              <span className="text-slate-400 block text-[11px]">Modal Awal:</span>
-              <span className="font-semibold text-slate-200 font-mono-num">
-                {formatCurrency(settings.initialCapital, settings.currency)}
+          {/* MT5 Metrics Grid */}
+          <div className="pt-2.5 border-t border-slate-800/80 grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
+            <div className="bg-slate-900/50 p-2 rounded-xl border border-slate-800/60">
+              <span className="text-slate-400 block text-[10px]">Balance (Saldo):</span>
+              <span className="font-semibold text-slate-200 font-mono-num text-xs">
+                {formatCurrency(mt5Data ? mt5Data.balance : settings.initialCapital, settings.currency)}
               </span>
             </div>
-            <div>
-              <span className="text-slate-400 block text-[11px]">Realized PnL:</span>
-              <span className={`font-semibold font-mono-num ${totalRealizedPnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
-                {totalRealizedPnl >= 0 ? '+' : ''}{formatCurrency(totalRealizedPnl, settings.currency)}
+            
+            <div className="bg-slate-900/50 p-2 rounded-xl border border-slate-800/60">
+              <span className="text-slate-400 block text-[10px]">Floating PnL:</span>
+              <span className={`font-semibold font-mono-num text-xs ${
+                (mt5Data?.floating_pnl ?? 0) >= 0 ? 'text-emerald-400' : 'text-rose-400'
+              }`}>
+                {(mt5Data?.floating_pnl ?? 0) >= 0 ? '+' : ''}
+                {formatCurrency(mt5Data?.floating_pnl ?? 0, settings.currency)}
               </span>
             </div>
+
+            <div className="bg-slate-900/50 p-2 rounded-xl border border-slate-800/60">
+              <span className="text-slate-400 block text-[10px]">Margin Terpakai:</span>
+              <span className="font-semibold text-cyan-300 font-mono-num text-xs">
+                {formatCurrency(mt5Data?.margin ?? 0, settings.currency)}
+              </span>
+            </div>
+
+            <div className="bg-slate-900/50 p-2 rounded-xl border border-slate-800/60">
+              <span className="text-slate-400 block text-[10px]">Realized Jurnal:</span>
+              <span className={`font-semibold font-mono-num text-xs ${
+                totalRealizedPnl >= 0 ? 'text-emerald-400' : 'text-rose-400'
+              }`}>
+                {totalRealizedPnl >= 0 ? '+' : ''}
+                {formatCurrency(totalRealizedPnl, settings.currency)}
+              </span>
+            </div>
+          </div>
+
+          {/* Sync Timestamp Info */}
+          <div className="flex items-center justify-between text-[10px] text-slate-500 pt-0.5">
+            <span className="flex items-center space-x-1">
+              <Activity className="w-3 h-3 text-emerald-500/70" />
+              <span>Interval Polling: 5 detik</span>
+            </span>
+            <span>
+              {mt5Data?.lastUpdated ? `Terakhir update: ${mt5Data.lastUpdated}` : 'Menghubungkan...'}
+            </span>
           </div>
         </div>
       </div>

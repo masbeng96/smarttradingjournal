@@ -1,19 +1,20 @@
 import { AppVersionInfo } from '../types/journal';
 
 export const CURRENT_APP_VERSION: AppVersionInfo = {
-  version: '1.0.3',
-  versionCode: 4,
+  version: '1.0.4',
+  versionCode: 5,
   releaseDate: '2026-09-19',
-  title: 'Trading Journal Pro v1.0.3',
+  title: 'Trading Journal Pro v1.0.4',
   changelog: [
+    'Integrasi Live MT5 Real-time API (Akun, Balance, Equity, Margin, Floating PnL)',
+    'Dukungan Android usesCleartextTraffic & Proxy Server untuk HTTP Endpoint',
+    'Binding otomatis Equity & Balance live ke Dashboard & Lot Risk Calculator',
     'Tampilan Fullscreen Edge-to-Edge 100% di HP Android (tanpa border bingkai)',
     'Status Bar & Navigation Bar Android otomatis menyatu dengan UI gelap aplikasi',
     'Fitur Registrasi & Login Trader (Firebase Authentication)',
-    'Halaman Pengaturan Profil Trader, Broker & Tipe Akun',
-    'Ikon Launcher Android resmi dan logo header disesuaikan',
-    'Pembersihan teks Firestore di header Trade Journal'
+    'Halaman Pengaturan Profil Trader, Broker & Tipe Akun'
   ],
-  downloadUrl: 'https://github.com/masbeng96/smarttradingjournal/releases/download/v1.0.3/TradingJournal-v1.0.3.apk',
+  downloadUrl: 'https://github.com/masbeng96/smarttradingjournal/releases/download/v1.0.4/TradingJournal-v1.0.4.apk',
   mandatory: false,
 };
 
