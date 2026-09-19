@@ -1,18 +1,19 @@
 import { AppVersionInfo } from '../types/journal';
 
 export const CURRENT_APP_VERSION: AppVersionInfo = {
-  version: '1.0.0',
-  versionCode: 1,
+  version: '1.0.1',
+  versionCode: 2,
   releaseDate: '2026-09-19',
-  title: 'Trading Journal Pro v1.0.0',
+  title: 'Trading Journal Pro v1.0.1',
   changelog: [
-    'Rilis Awal Trading Journal & Compound Planner',
-    'Monthly Recurring Deposit Automation',
+    'Google Cloud Run production deployment live',
+    'Firebase Firestore Jakarta (asia-southeast2) realtime sync',
+    'Compound Planner with Monthly Recurring Deposit',
     'Dynamic Lot Compounding & Risk Engine',
     '05:00 AM Automated Analysis & Coaching Center',
-    'Firebase Cloud Firestore Sync & Android APK compilation support'
+    'Minimalist Dropdown & Android First-install Onboarding'
   ],
-  downloadUrl: 'https://github.com/masbeng96/smarttradingjournal/releases/latest/download/TradingJournal-v1.0.0.apk',
+  downloadUrl: 'https://github.com/masbeng96/smarttradingjournal/releases/download/v1.0.1/TradingJournal-v1.0.1.apk',
   mandatory: false,
 };
 
