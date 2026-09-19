@@ -8,6 +8,7 @@ import { CompoundPlannerView } from './components/planner/CompoundPlannerView';
 import { JournalView } from './components/journal/JournalView';
 import { RiskLotManagerView } from './components/risk/RiskLotManagerView';
 import { DailyAnalysisView } from './components/analysis/DailyAnalysisView';
+import { EconomicCalendarView } from './components/calendar/EconomicCalendarView';
 import { NewTradeModal } from './components/journal/NewTradeModal';
 import { NotificationDrawer } from './components/notifications/NotificationDrawer';
 import { UpdateModal } from './components/updater/UpdateModal';
@@ -35,6 +36,7 @@ const MainContent: React.FC = () => {
           >
             {activeTab === 'dashboard' && <OverviewDashboard />}
             {activeTab === 'planner' && <CompoundPlannerView />}
+            {activeTab === 'calendar' && <EconomicCalendarView />}
             {activeTab === 'journal' && <JournalView />}
             {activeTab === 'risk' && <RiskLotManagerView />}
             {activeTab === 'coaching' && <DailyAnalysisView />}

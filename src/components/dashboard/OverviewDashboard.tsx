@@ -14,7 +14,8 @@ import {
   BookOpen,
   RotateCcw,
   Activity,
-  WifiOff
+  WifiOff,
+  CalendarDays
 } from 'lucide-react';
 import { 
   ResponsiveContainer, 
@@ -226,6 +227,36 @@ export const OverviewDashboard: React.FC = () => {
           className="px-3 py-1.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/30 text-emerald-300 text-xs font-bold transition-all flex items-center space-x-1"
         >
           <span>Atur Risk</span>
+          <ChevronRight className="w-3.5 h-3.5" />
+        </button>
+      </div>
+
+      {/* 2.5 Quick Forex Factory Economic Calendar Banner */}
+      <div 
+        onClick={() => setActiveTab('calendar')}
+        className="rounded-2xl p-3.5 bg-gradient-to-r from-[#0a1526] via-slate-900 to-[#07131e] border border-cyan-500/30 flex items-center justify-between cursor-pointer hover:border-cyan-500/50 transition-all shadow-sm group"
+      >
+        <div className="flex items-center space-x-3">
+          <div className="w-10 h-10 rounded-xl bg-cyan-500/20 border border-cyan-500/30 flex items-center justify-center text-cyan-400 group-hover:scale-105 transition-transform">
+            <CalendarDays className="w-5 h-5" />
+          </div>
+          <div>
+            <div className="text-xs font-bold text-slate-200 flex items-center space-x-1.5">
+              <span>Kalender Berita Ekonomi</span>
+              <span className="text-[9px] font-extrabold px-1.5 py-0.2 rounded bg-cyan-500/20 text-cyan-400 border border-cyan-500/30">
+                LIVE FF
+              </span>
+            </div>
+            <div className="text-[11px] text-slate-400">
+              Pantau rilis data High-Impact (CPI, FOMC, NFP)
+            </div>
+          </div>
+        </div>
+        <button
+          onClick={(e) => { e.stopPropagation(); setActiveTab('calendar'); }}
+          className="px-3 py-1.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/30 text-cyan-300 text-xs font-bold transition-all flex items-center space-x-1"
+        >
+          <span>Buka</span>
           <ChevronRight className="w-3.5 h-3.5" />
         </button>
       </div>

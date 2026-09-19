@@ -1,18 +1,18 @@
 {
-  "version": "1.0.4",
-  "versionCode": 5,
+  "version": "1.0.5",
+  "versionCode": 6,
   "releaseDate": "2026-09-19",
   "minRequiredVersion": "1.0.0",
-  "title": "Trading Journal & Compound Planner Pro v1.0.4",
+  "title": "Trading Journal & Compound Planner Pro v1.0.5",
   "changelog": [
+    "Menu Baru: Kalender Berita Ekonomi (Forex Factory Live News Feed & Scraper)",
+    "Peringatan Real-Time Berita High-Impact (Merah) Hari Ini (CPI, FOMC, NFP, dll)",
+    "Filter multi-kategori: Tingkat Impact, Mata Uang (USD, EUR, GBP, JPY, dll) & Tanggal",
+    "Konversi otomatis waktu rilis berita ke Waktu Indonesia Barat (WIB) & Countdown live",
     "Integrasi Live MT5 Real-time API (Akun, Balance, Equity, Margin, Floating PnL)",
     "Dukungan Android usesCleartextTraffic & Proxy Server untuk HTTP Endpoint",
-    "Binding otomatis Equity & Balance live ke Dashboard & Lot Risk Calculator",
-    "Tampilan Fullscreen Edge-to-Edge 100% di HP Android (tanpa border bingkai)",
-    "Status Bar & Navigation Bar Android otomatis menyatu dengan UI gelap aplikasi",
-    "Fitur Registrasi & Login Trader (Firebase Authentication)",
-    "Halaman Pengaturan Profil Trader, Broker & Tipe Akun"
+    "Tampilan Fullscreen Edge-to-Edge 100% di HP Android (tanpa border bingkai)"
   ],
-  "downloadUrl": "https://github.com/masbeng96/smarttradingjournal/releases/download/v1.0.4/TradingJournal-v1.0.4.apk",
+  "downloadUrl": "https://github.com/masbeng96/smarttradingjournal/releases/download/v1.0.5/TradingJournal-v1.0.5.apk",
   "mandatory": false
 }

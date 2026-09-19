@@ -29,6 +29,16 @@ export default defineConfig({
           'x-api-key': 'TokenRahasia2026',
         },
       },
+      '/api/calendar/thisweek': {
+        target: 'https://nfs.faireconomy.media',
+        changeOrigin: true,
+        rewrite: () => '/ff_calendar_thisweek.json',
+      },
+      '/api/calendar/nextweek': {
+        target: 'https://nfs.faireconomy.media',
+        changeOrigin: true,
+        rewrite: () => '/ff_calendar_nextweek.json',
+      },
     },
   },
   build: {

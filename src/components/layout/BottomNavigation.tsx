@@ -6,11 +6,13 @@ import {
   PlusCircle, 
   ShieldAlert, 
   Sparkles,
+  CalendarDays,
+  BookOpen,
   LucideIcon
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 
-type NavTabId = 'dashboard' | 'planner' | 'risk' | 'coaching';
+type NavTabId = 'dashboard' | 'planner' | 'calendar' | 'journal' | 'risk' | 'coaching';
 
 interface TabItem {
   id: NavTabId;
@@ -20,12 +22,14 @@ interface TabItem {
 
 const leftTabs: TabItem[] = [
   { id: 'dashboard', label: 'Overview', icon: LayoutDashboard },
-  { id: 'planner', label: 'Compound', icon: LineChart },
+  { id: 'planner', label: 'Plan', icon: LineChart },
+  { id: 'calendar', label: 'Kalender', icon: CalendarDays },
 ];
 
 const rightTabs: TabItem[] = [
-  { id: 'risk', label: 'Lot & Risk', icon: ShieldAlert },
-  { id: 'coaching', label: '5 AM AI', icon: Sparkles },
+  { id: 'journal', label: 'Jurnal', icon: BookOpen },
+  { id: 'risk', label: 'Risk', icon: ShieldAlert },
+  { id: 'coaching', label: '5 AM', icon: Sparkles },
 ];
 
 export const BottomNavigation: React.FC = () => {
@@ -58,8 +62,8 @@ export const BottomNavigation: React.FC = () => {
 
   return (
     <nav aria-label="Bottom Navigation" className="fixed bottom-0 left-0 right-0 z-40 flex justify-center pointer-events-none">
-      <div className="w-full lg:max-w-[440px] pointer-events-auto px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-2">
-        <div className="bg-[#0b0f19]/95 backdrop-blur-2xl border border-slate-800/80 rounded-2xl p-1.5 shadow-[0_10px_30px_rgba(0,0,0,0.7)] flex items-center justify-between relative">
+      <div className="w-full lg:max-w-[480px] pointer-events-auto px-2 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-2">
+        <div className="bg-[#0b0f19]/95 backdrop-blur-2xl border border-slate-800/80 rounded-2xl p-1 shadow-[0_10px_30px_rgba(0,0,0,0.7)] flex items-center justify-between relative">
           {/* Left Tabs */}
           {leftTabs.map(renderNavTab)}
 

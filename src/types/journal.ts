@@ -163,3 +163,31 @@ export interface AppVersionInfo {
   downloadUrl: string;
   mandatory: boolean;
 }
+
+export type NewsImpact = 'High' | 'Medium' | 'Low' | 'Holiday' | 'Non-Economic';
+
+export interface EconomicEvent {
+  id: string;
+  title: string;
+  country: string;              // e.g. "USD", "EUR", "GBP", "JPY", "All"
+  date: string;                 // ISO 8601 string from Forex Factory, e.g. "2026-09-18T19:30:00-04:00"
+  timestamp: number;            // Unix millisecond timestamp in local time
+  timeWib: string;              // Formatted local time e.g. "19:30 WIB"
+  dateFormatted: string;        // Formatted date e.g. "Jumat, 18 Sep 2026"
+  dateKey: string;              // YYYY-MM-DD
+  impact: NewsImpact;
+  forecast: string;
+  previous: string;
+  actual?: string;
+  isHighImpact: boolean;
+  isToday: boolean;
+  isPast: boolean;
+  detailUrl?: string;
+}
+
+export interface EconomicCalendarState {
+  events: EconomicEvent[];
+  isLoading: boolean;
+  error: string | null;
+  lastFetched: string | null;
+}

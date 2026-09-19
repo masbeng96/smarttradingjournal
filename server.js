@@ -62,6 +62,43 @@ app.get('/api/account/:id', async (req, res) => {
   }
 });
 
+// Forex Factory Economic Calendar proxy endpoints
+app.get('/api/calendar/thisweek', async (req, res) => {
+  try {
+    const ffRes = await fetch('https://nfs.faireconomy.media/ff_calendar_thisweek.json', {
+      headers: {
+        'Accept': 'application/json',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
+      }
+    });
+    if (!ffRes.ok) {
+      return res.status(ffRes.status).json({ error: 'Forex Factory server returned ' + ffRes.status });
+    }
+    const data = await ffRes.json();
+    res.status(200).json(data);
+  } catch (err) {
+    res.status(502).json({ error: 'Failed to fetch Forex Factory calendar: ' + (err.message || err) });
+  }
+});
+
+app.get('/api/calendar/nextweek', async (req, res) => {
+  try {
+    const ffRes = await fetch('https://nfs.faireconomy.media/ff_calendar_nextweek.json', {
+      headers: {
+        'Accept': 'application/json',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'
+      }
+    });
+    if (!ffRes.ok) {
+      return res.status(ffRes.status).json({ error: 'Forex Factory server returned ' + ffRes.status });
+    }
+    const data = await ffRes.json();
+    res.status(200).json(data);
+  } catch (err) {
+    res.status(502).json({ error: 'Failed to fetch Forex Factory calendar: ' + (err.message || err) });
+  }
+});
+
 // Catch-all handler for SPA navigation
 app.get('*', (req, res) => {
   res.sendFile(path.join(__dirname, 'dist', 'index.html'));

@@ -92,8 +92,8 @@ interface JournalContextType {
   isCloudConnected: boolean;
 
   // View mode
-  activeTab: 'dashboard' | 'planner' | 'journal' | 'risk' | 'coaching';
-  setActiveTab: (tab: 'dashboard' | 'planner' | 'journal' | 'risk' | 'coaching') => void;
+  activeTab: 'dashboard' | 'planner' | 'journal' | 'risk' | 'coaching' | 'calendar';
+  setActiveTab: (tab: 'dashboard' | 'planner' | 'journal' | 'risk' | 'coaching' | 'calendar') => void;
   isMobileDeviceFrame: boolean;
   setIsMobileDeviceFrame: (val: boolean) => void;
   isNewTradeModalOpen: boolean;
@@ -195,7 +195,7 @@ export const JournalProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [isCloudConnected, setIsCloudConnected] = useState<boolean>(false);
 
   // 8. UI Navigation & Frame states
-  const [activeTab, setActiveTab] = useState<'dashboard' | 'planner' | 'journal' | 'risk' | 'coaching'>('dashboard');
+  const [activeTab, setActiveTab] = useState<'dashboard' | 'planner' | 'journal' | 'risk' | 'coaching' | 'calendar'>('dashboard');
   const [isMobileDeviceFrame, setIsMobileDeviceFrame] = useState<boolean>(true);
   const [isNewTradeModalOpen, setIsNewTradeModalOpen] = useState<boolean>(false);
   const [isSettingsModalOpen, setIsSettingsModalOpen] = useState<boolean>(false);
