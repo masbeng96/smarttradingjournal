@@ -5,7 +5,8 @@ import {
   DailyCoachingReport, 
   AppNotification, 
   FirebaseConfigState,
-  AppVersionInfo
+  AppVersionInfo,
+  UserProfile
 } from '../types/journal';
 import { 
   DEFAULT_PLAN_SETTINGS, 
@@ -16,7 +17,13 @@ import {
   syncSaveTrade,
   syncDeleteTrade,
   syncSaveSettings,
-  syncSaveCoaching
+  syncSaveCoaching,
+  syncSaveUserProfile,
+  syncGetUserProfile,
+  registerFirebaseUser,
+  loginFirebaseUser,
+  logoutFirebaseUser,
+  subscribeAuthState
 } from '../lib/firebase';
 import { generateDailyCoachingReport, isFiveAmAnalysisDue } from '../lib/dailyAnalysisEngine';
 import { calculateRecommendedLot, generateLotMilestoneLadder } from '../lib/lotCalculator';
@@ -62,6 +69,15 @@ interface JournalContextType {
   latestVersion: AppVersionInfo | null;
   triggerAppUpdate: () => void;
   
+  // User Authentication & Profile
+  userProfile: UserProfile | null;
+  updateUserProfile: (profile: Partial<UserProfile>) => void;
+  login: (email: string, pass: string) => Promise<UserProfile>;
+  register: (email: string, pass: string, name: string) => Promise<UserProfile>;
+  logout: () => Promise<void>;
+  isAuthModalOpen: boolean;
+  setIsAuthModalOpen: (val: boolean) => void;
+
   // Firebase state
   firebaseConfig: FirebaseConfigState;
   updateFirebaseConfig: (config: FirebaseConfigState) => void;
@@ -130,11 +146,22 @@ export const JournalProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   });
 
-  // 5. Firebase Config
+  // 5. User Profile State
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(() => {
+    try {
+      const saved = localStorage.getItem(STORAGE_KEYS.USER_PROFILE);
+      return saved ? JSON.parse(saved) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
+
+  // 6. Firebase Config
   const [firebaseConfig, setFirebaseConfig] = useState<FirebaseConfigState>(getStoredFirebaseConfig);
   const [isCloudConnected, setIsCloudConnected] = useState<boolean>(false);
 
-  // 6. UI Navigation & Frame states
+  // 7. UI Navigation & Frame states
   const [activeTab, setActiveTab] = useState<'dashboard' | 'planner' | 'journal' | 'risk' | 'coaching'>('dashboard');
   const [isMobileDeviceFrame, setIsMobileDeviceFrame] = useState<boolean>(true);
   const [isNewTradeModalOpen, setIsNewTradeModalOpen] = useState<boolean>(false);
@@ -142,11 +169,11 @@ export const JournalProvider: React.FC<{ children: React.ReactNode }> = ({ child
   const [isNotificationDrawerOpen, setIsNotificationDrawerOpen] = useState<boolean>(false);
   const [isUpdateModalOpen, setIsUpdateModalOpen] = useState<boolean>(false);
 
-  // 7. Update Engine State
+  // 8. Update Engine State
   const [updateAvailable, setUpdateAvailable] = useState<boolean>(false);
   const [latestVersion, setLatestVersion] = useState<AppVersionInfo | null>(null);
 
-  // 8. Onboarding State (First install on Android/Web)
+  // 9. Onboarding State (First install on Android/Web)
   const [hasOnboarded, setHasOnboarded] = useState<boolean>(() => {
     try {
       return localStorage.getItem('trading_journal_has_onboarded_v1') === 'true';
@@ -168,17 +195,96 @@ export const JournalProvider: React.FC<{ children: React.ReactNode }> = ({ child
     setHasOnboarded(false);
   };
 
-  // Initialize Firebase if configured
+  // Initialize Firebase and listen to Auth state changes
   useEffect(() => {
-    const db = initFirebase(firebaseConfig);
+    const { db } = initFirebase(firebaseConfig);
     setIsCloudConnected(!!db);
+
+    const unsubscribe = subscribeAuthState(async (firebaseUser) => {
+      if (firebaseUser) {
+        let profile = await syncGetUserProfile(firebaseUser.uid);
+        if (!profile) {
+          profile = {
+            uid: firebaseUser.uid,
+            email: firebaseUser.email || '',
+            displayName: firebaseUser.displayName || (firebaseUser.email ? firebaseUser.email.split('@')[0] : 'Trader Pro'),
+            tier: 'PRO',
+            broker: 'Exness',
+            accountType: 'LIVE',
+            joinedDate: new Date().toISOString(),
+          };
+          await syncSaveUserProfile(profile);
+        }
+        setUserProfile(profile);
+        localStorage.setItem(STORAGE_KEYS.USER_PROFILE, JSON.stringify(profile));
+      } else {
+        // If not logged in, retain local profile if present or set to null
+      }
+    });
+
+    return () => unsubscribe();
   }, [firebaseConfig]);
+
+  // Auth Operations
+  const login = async (email: string, pass: string): Promise<UserProfile> => {
+    const profile = await loginFirebaseUser(email, pass);
+    setUserProfile(profile);
+    addNotification({
+      title: '👋 Selamat Datang!',
+      message: `Berhasil masuk sebagai ${profile.displayName} (${profile.email}). Data Anda tersinkron ke cloud.`,
+      type: 'TARGET_REACHED',
+    });
+    return profile;
+  };
+
+  const register = async (email: string, pass: string, name: string): Promise<UserProfile> => {
+    const profile = await registerFirebaseUser(email, pass, name);
+    setUserProfile(profile);
+    addNotification({
+      title: '🎉 Akun Berhasil Dibuat!',
+      message: `Selamat datang di Smart Trading Journal, ${name}!`,
+      type: 'TARGET_REACHED',
+    });
+    return profile;
+  };
+
+  const logout = async () => {
+    await logoutFirebaseUser();
+    setUserProfile(null);
+    addNotification({
+      title: '👋 Sesi Berakhir',
+      message: 'Anda telah keluar dari akun. Aplikasi kini berjalan dalam mode tamu lokal.',
+      type: 'TARGET_REACHED',
+    });
+  };
+
+  const updateUserProfile = (newProfile: Partial<UserProfile>) => {
+    setUserProfile(prev => {
+      if (!prev) {
+        const created: UserProfile = {
+          uid: 'local-user',
+          email: 'offline@trader.local',
+          displayName: newProfile.displayName || 'Trader Pro',
+          broker: newProfile.broker || 'Exness',
+          accountType: newProfile.accountType || 'LIVE',
+          tier: 'PRO',
+          ...newProfile,
+        };
+        localStorage.setItem(STORAGE_KEYS.USER_PROFILE, JSON.stringify(created));
+        return created;
+      }
+      const updated = { ...prev, ...newProfile };
+      localStorage.setItem(STORAGE_KEYS.USER_PROFILE, JSON.stringify(updated));
+      syncSaveUserProfile(updated);
+      return updated;
+    });
+  };
 
   // Persist settings
   useEffect(() => {
     localStorage.setItem(STORAGE_KEYS.SETTINGS, JSON.stringify(settings));
-    syncSaveSettings(settings, firebaseConfig);
-  }, [settings, firebaseConfig]);
+    syncSaveSettings(settings, firebaseConfig, userProfile?.uid);
+  }, [settings, firebaseConfig, userProfile]);
 
   // Persist trades
   useEffect(() => {
@@ -267,7 +373,7 @@ export const JournalProvider: React.FC<{ children: React.ReactNode }> = ({ child
       if (isFiveAmAnalysisDue(hasRanToday ? todayStr : undefined)) {
         const newReport = generateDailyCoachingReport(trades, currentEquity, settings, todayStr);
         setCoachingReports(prev => [newReport, ...prev.filter(r => r.date !== todayStr)]);
-        syncSaveCoaching(newReport, firebaseConfig);
+        syncSaveCoaching(newReport, firebaseConfig, userProfile?.uid);
 
         // Notify user
         addNotification({
@@ -282,9 +388,9 @@ export const JournalProvider: React.FC<{ children: React.ReactNode }> = ({ child
     };
 
     checkSchedule();
-    const interval = setInterval(checkSchedule, 60000); // Check every minute
+    const interval = setInterval(checkSchedule, 60000);
     return () => clearInterval(interval);
-  }, [trades, currentEquity, settings, coachingReports, firebaseConfig]);
+  }, [trades, currentEquity, settings, coachingReports, firebaseConfig, userProfile]);
 
   // Manual Trigger for 5:00 AM Analysis
   const runDailyAnalysisManual = () => {
@@ -292,7 +398,7 @@ export const JournalProvider: React.FC<{ children: React.ReactNode }> = ({ child
     const newReport = generateDailyCoachingReport(trades, currentEquity, settings, todayStr);
     
     setCoachingReports(prev => [newReport, ...prev.filter(r => r.date !== todayStr)]);
-    syncSaveCoaching(newReport, firebaseConfig);
+    syncSaveCoaching(newReport, firebaseConfig, userProfile?.uid);
 
     addNotification({
       title: '📊 Analisa Trading 05:00 AM Telah Dibuat',
@@ -319,7 +425,7 @@ export const JournalProvider: React.FC<{ children: React.ReactNode }> = ({ child
     };
 
     setTrades(prev => [newTrade, ...prev]);
-    syncSaveTrade(newTrade, firebaseConfig);
+    syncSaveTrade(newTrade, firebaseConfig, userProfile?.uid);
 
     if (tradeData.outcome === 'WIN') {
       playWinSound();
@@ -346,14 +452,14 @@ export const JournalProvider: React.FC<{ children: React.ReactNode }> = ({ child
 
   const deleteTrade = (id: string) => {
     setTrades(prev => prev.filter(t => t.id !== id));
-    syncDeleteTrade(id, firebaseConfig);
+    syncDeleteTrade(id, firebaseConfig, userProfile?.uid);
   };
 
   const updateTrade = (id: string, updateData: Partial<TradeEntry>) => {
     setTrades(prev => prev.map(t => {
       if (t.id === id) {
         const updated = { ...t, ...updateData };
-        syncSaveTrade(updated, firebaseConfig);
+        syncSaveTrade(updated, firebaseConfig, userProfile?.uid);
         return updated;
       }
       return t;
@@ -412,6 +518,13 @@ export const JournalProvider: React.FC<{ children: React.ReactNode }> = ({ child
       updateAvailable,
       latestVersion,
       triggerAppUpdate,
+      userProfile,
+      updateUserProfile,
+      login,
+      register,
+      logout,
+      isAuthModalOpen,
+      setIsAuthModalOpen,
       firebaseConfig,
       updateFirebaseConfig,
       isCloudConnected,

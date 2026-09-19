@@ -13,6 +13,7 @@ import { NotificationDrawer } from './components/notifications/NotificationDrawe
 import { UpdateModal } from './components/updater/UpdateModal';
 import { SettingsModal } from './components/settings/SettingsModal';
 import { OnboardingModal } from './components/onboarding/OnboardingModal';
+import { AuthModal } from './components/auth/AuthModal';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const MainContent: React.FC = () => {
@@ -47,6 +48,7 @@ const MainContent: React.FC = () => {
       <UpdateModal />
       <SettingsModal />
       <OnboardingModal />
+      <AuthModal />
     </div>
   );
 };

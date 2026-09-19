@@ -2,12 +2,10 @@ import React from 'react';
 import { useJournal } from '../../context/JournalContext';
 import { 
   Bell, 
-  Settings, 
-  Cloud, 
-  HardDrive, 
+  User, 
   Sparkles, 
-  TrendingUp, 
-  ArrowUpCircle 
+  ArrowUpCircle,
+  LogIn
 } from 'lucide-react';
 
 export const TopHeader: React.FC = () => {
@@ -15,12 +13,13 @@ export const TopHeader: React.FC = () => {
     unreadNotificationCount, 
     setIsNotificationDrawerOpen, 
     setIsSettingsModalOpen,
+    setIsAuthModalOpen,
     runDailyAnalysisManual,
-    isCloudConnected,
     settings,
     updateSettings,
     updateAvailable,
-    setIsUpdateModalOpen
+    setIsUpdateModalOpen,
+    userProfile
   } = useJournal();
 
   const toggleCurrency = () => {
@@ -29,36 +28,29 @@ export const TopHeader: React.FC = () => {
     });
   };
 
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map((n) => n[0])
+      .join('')
+      .substring(0, 2)
+      .toUpperCase() || 'TR';
+  };
+
   return (
     <header className="sticky top-0 z-30 w-full px-4 pt-4 pb-3 bg-[#070a12]/95 backdrop-blur-xl border-b border-slate-800/60 flex items-center justify-between">
       {/* Brand & App Title */}
       <div className="flex items-center space-x-2.5">
-        <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-emerald-500 to-cyan-500 p-0.5 shadow-glow-emerald flex items-center justify-center">
-          <div className="w-full h-full bg-[#0b0f19] rounded-[14px] flex items-center justify-center">
-            <TrendingUp className="w-4 h-4 text-emerald-400" />
+        <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-emerald-500 to-cyan-500 p-0.5 shadow-glow-emerald flex items-center justify-center shrink-0">
+          <div className="w-full h-full bg-[#0b0f19] rounded-[14px] flex items-center justify-center overflow-hidden p-1.5">
+            <img src="/logo.svg" alt="Trade Journal Logo" className="w-full h-full object-contain" />
           </div>
         </div>
         <div>
           <div className="flex items-center space-x-1.5">
-            <h1 className="text-sm font-bold tracking-tight text-white">TRADE JOURNAL</h1>
-            <span className="text-[10px] uppercase font-bold tracking-widest px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+            <h1 className="text-sm font-extrabold tracking-tight text-white">TRADE JOURNAL</h1>
+            <span className="text-[9px] uppercase font-extrabold tracking-widest px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
               PRO
-            </span>
-          </div>
-          <div className="flex items-center space-x-2 text-[11px] text-slate-400">
-            {/* Cloud or Local Persistence Badge */}
-            <span className="flex items-center space-x-1">
-              {isCloudConnected ? (
-                <>
-                  <Cloud className="w-3 h-3 text-emerald-400" />
-                  <span className="text-emerald-400 font-medium">Firestore</span>
-                </>
-              ) : (
-                <>
-                  <HardDrive className="w-3 h-3 text-cyan-400" />
-                  <span className="text-slate-400">Offline/Local</span>
-                </>
-              )}
             </span>
           </div>
         </div>
@@ -70,7 +62,7 @@ export const TopHeader: React.FC = () => {
         <button
           onClick={toggleCurrency}
           title="Ganti Mata Uang (USD / IDR)"
-          className="px-2 py-1 rounded-lg bg-slate-900 border border-slate-800 text-[11px] font-mono font-semibold text-slate-300 hover:text-emerald-400 hover:border-emerald-500/30 transition-colors"
+          className="px-2 py-1 rounded-xl bg-slate-900 border border-slate-800 text-[11px] font-mono font-semibold text-slate-300 hover:text-emerald-400 hover:border-emerald-500/30 transition-colors"
         >
           {settings.currency}
         </button>
@@ -79,7 +71,7 @@ export const TopHeader: React.FC = () => {
         {updateAvailable && (
           <button
             onClick={() => setIsUpdateModalOpen(true)}
-            className="flex items-center space-x-1 px-2.5 py-1 rounded-lg bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 text-[11px] font-semibold animate-pulse"
+            className="flex items-center space-x-1 px-2.5 py-1 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 text-[11px] font-semibold animate-pulse"
             title="Update Aplikasi Baru Tersedia"
           >
             <ArrowUpCircle className="w-3.5 h-3.5" />
@@ -113,13 +105,19 @@ export const TopHeader: React.FC = () => {
           )}
         </button>
 
-        {/* Settings Gear */}
+        {/* Profile / Account Trigger */}
         <button
           onClick={() => setIsSettingsModalOpen(true)}
-          className="p-2 rounded-xl bg-slate-900/90 border border-slate-800 text-slate-300 hover:text-white hover:border-slate-700 transition-colors"
-          title="Pengaturan"
+          className="p-1.5 rounded-xl bg-slate-900/90 border border-slate-800 text-slate-300 hover:text-white hover:border-emerald-500/40 transition-all flex items-center justify-center relative"
+          title="Pengaturan Profil Trader"
         >
-          <Settings className="w-4 h-4" />
+          {userProfile ? (
+            <div className="w-5 h-5 rounded-lg bg-gradient-to-tr from-emerald-500 to-cyan-500 flex items-center justify-center text-[10px] font-extrabold text-[#070a12]">
+              {getInitials(userProfile.displayName || userProfile.email)}
+            </div>
+          ) : (
+            <User className="w-4 h-4" />
+          )}
         </button>
       </div>
     </header>

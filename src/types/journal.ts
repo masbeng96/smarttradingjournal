@@ -132,6 +132,17 @@ export interface FirebaseConfigState {
   useCloudFirestore: boolean;
 }
 
+export interface UserProfile {
+  uid: string;
+  email: string;
+  displayName: string;
+  photoURL?: string;
+  broker?: string;
+  accountType?: 'LIVE' | 'DEMO' | 'PROP_FIRM';
+  tier?: 'PRO' | 'ELITE' | 'FREE';
+  joinedDate?: string;
+}
+
 export interface AppVersionInfo {
   version: string;
   versionCode: number;

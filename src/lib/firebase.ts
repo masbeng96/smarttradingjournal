@@ -1,15 +1,26 @@
-import { initializeApp, getApps, getApp } from 'firebase/app';
+import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { 
   getFirestore, 
   collection, 
   doc, 
   setDoc, 
+  getDoc,
   getDocs, 
   deleteDoc, 
   onSnapshot,
   Firestore 
 } from 'firebase/firestore';
-import { TradeEntry, PlanSettings, DailyCoachingReport, FirebaseConfigState } from '../types/journal';
+import { 
+  getAuth, 
+  createUserWithEmailAndPassword, 
+  signInWithEmailAndPassword, 
+  signOut, 
+  updateProfile, 
+  onAuthStateChanged, 
+  User,
+  Auth 
+} from 'firebase/auth';
+import { TradeEntry, PlanSettings, DailyCoachingReport, FirebaseConfigState, UserProfile } from '../types/journal';
 
 const FIREBASE_CONFIG_KEY = 'trading_journal_firebase_config';
 
@@ -36,16 +47,19 @@ export function saveFirebaseConfig(config: FirebaseConfigState) {
   localStorage.setItem(FIREBASE_CONFIG_KEY, JSON.stringify(config));
 }
 
+let appInstance: FirebaseApp | null = null;
 let dbInstance: Firestore | null = null;
+let authInstance: Auth | null = null;
 
-export function initFirebase(config: FirebaseConfigState): Firestore | null {
+export function initFirebase(config: FirebaseConfigState): { db: Firestore | null; auth: Auth | null } {
   if (!config.useCloudFirestore || !config.apiKey || !config.projectId) {
     dbInstance = null;
-    return null;
+    authInstance = null;
+    return { db: null, auth: null };
   }
 
   try {
-    const app = getApps().length > 0 ? getApp() : initializeApp({
+    appInstance = getApps().length > 0 ? getApp() : initializeApp({
       apiKey: config.apiKey,
       authDomain: config.authDomain || `${config.projectId}.firebaseapp.com`,
       projectId: config.projectId,
@@ -54,12 +68,14 @@ export function initFirebase(config: FirebaseConfigState): Firestore | null {
       appId: config.appId,
     });
 
-    dbInstance = getFirestore(app);
-    return dbInstance;
+    dbInstance = getFirestore(appInstance);
+    authInstance = getAuth(appInstance);
+    return { db: dbInstance, auth: authInstance };
   } catch (err) {
     console.error('Firebase initialization error:', err);
     dbInstance = null;
-    return null;
+    authInstance = null;
+    return { db: null, auth: null };
   }
 }
 
@@ -69,6 +85,7 @@ export const STORAGE_KEYS = {
   TRADES: 'trading_journal_trades_v1',
   COACHING: 'trading_journal_coaching_v1',
   NOTIFICATIONS: 'trading_journal_notifications_v1',
+  USER_PROFILE: 'trading_journal_user_profile_v1',
 };
 
 export const DEFAULT_PLAN_SETTINGS: PlanSettings = {
@@ -91,11 +108,125 @@ export const DEFAULT_PLAN_SETTINGS: PlanSettings = {
   stepDownDrawdownThreshold: 5,
 };
 
-// Firestore Sync operations with Local fallback
-export async function syncSaveTrade(trade: TradeEntry, config: FirebaseConfigState) {
+// ==========================================
+// Authentication Functions
+// ==========================================
+
+export async function registerFirebaseUser(email: string, password: string, displayName: string): Promise<UserProfile> {
+  if (!authInstance) {
+    initFirebase(getStoredFirebaseConfig());
+  }
+  if (!authInstance) {
+    throw new Error('Koneksi Firebase Auth tidak tersedia.');
+  }
+
+  const credential = await createUserWithEmailAndPassword(authInstance, email, password);
+  const user = credential.user;
+
+  if (displayName) {
+    await updateProfile(user, { displayName });
+  }
+
+  const profile: UserProfile = {
+    uid: user.uid,
+    email: user.email || email,
+    displayName: displayName || user.displayName || email.split('@')[0],
+    tier: 'PRO',
+    broker: 'Exness / MetaTrader 5',
+    accountType: 'LIVE',
+    joinedDate: new Date().toISOString(),
+  };
+
+  // Save profile to Firestore
+  await syncSaveUserProfile(profile);
+  localStorage.setItem(STORAGE_KEYS.USER_PROFILE, JSON.stringify(profile));
+
+  return profile;
+}
+
+export async function loginFirebaseUser(email: string, password: string): Promise<UserProfile> {
+  if (!authInstance) {
+    initFirebase(getStoredFirebaseConfig());
+  }
+  if (!authInstance) {
+    throw new Error('Koneksi Firebase Auth tidak tersedia.');
+  }
+
+  const credential = await signInWithEmailAndPassword(authInstance, email, password);
+  const user = credential.user;
+
+  // Try to load user profile from Firestore
+  let profile = await syncGetUserProfile(user.uid);
+  if (!profile) {
+    profile = {
+      uid: user.uid,
+      email: user.email || email,
+      displayName: user.displayName || email.split('@')[0],
+      tier: 'PRO',
+      broker: 'MetaTrader 5',
+      accountType: 'LIVE',
+      joinedDate: new Date().toISOString(),
+    };
+    await syncSaveUserProfile(profile);
+  }
+
+  localStorage.setItem(STORAGE_KEYS.USER_PROFILE, JSON.stringify(profile));
+  return profile;
+}
+
+export async function logoutFirebaseUser(): Promise<void> {
+  if (authInstance) {
+    await signOut(authInstance);
+  }
+  localStorage.removeItem(STORAGE_KEYS.USER_PROFILE);
+}
+
+export function subscribeAuthState(callback: (user: User | null) => void) {
+  if (!authInstance) {
+    initFirebase(getStoredFirebaseConfig());
+  }
+  if (authInstance) {
+    return onAuthStateChanged(authInstance, callback);
+  }
+  callback(null);
+  return () => {};
+}
+
+// ==========================================
+// Firestore Sync operations
+// ==========================================
+
+export async function syncSaveUserProfile(profile: UserProfile) {
+  if (dbInstance) {
+    try {
+      const docRef = doc(dbInstance, 'users', profile.uid);
+      await setDoc(docRef, profile, { merge: true });
+    } catch (e) {
+      console.warn('Firestore user profile save error:', e);
+    }
+  }
+}
+
+export async function syncGetUserProfile(uid: string): Promise<UserProfile | null> {
+  if (dbInstance) {
+    try {
+      const docRef = doc(dbInstance, 'users', uid);
+      const snap = await getDoc(docRef);
+      if (snap.exists()) {
+        return snap.data() as UserProfile;
+      }
+    } catch (e) {
+      console.warn('Firestore get profile error:', e);
+    }
+  }
+  return null;
+}
+
+export async function syncSaveTrade(trade: TradeEntry, config: FirebaseConfigState, uid?: string) {
   if (config.useCloudFirestore && dbInstance) {
     try {
-      const docRef = doc(dbInstance, 'trades', trade.id);
+      const path = uid ? `users/${uid}/trades` : 'trades';
+      const docRef = doc(dbInstance, path, trade.id);
       await setDoc(docRef, trade);
     } catch (e) {
       console.warn('Firestore save error, trade saved to local state:', e);
@@ -103,10 +234,11 @@ export async function syncSaveTrade(trade: TradeEntry, config: FirebaseConfigSta
   }
 }
 
-export async function syncDeleteTrade(tradeId: string, config: FirebaseConfigState) {
+export async function syncDeleteTrade(tradeId: string, config: FirebaseConfigState, uid?: string) {
   if (config.useCloudFirestore && dbInstance) {
     try {
-      const docRef = doc(dbInstance, 'trades', tradeId);
+      const path = uid ? `users/${uid}/trades` : 'trades';
+      const docRef = doc(dbInstance, path, tradeId);
       await deleteDoc(docRef);
     } catch (e) {
       console.warn('Firestore delete error:', e);
@@ -114,10 +246,11 @@ export async function syncDeleteTrade(tradeId: string, config: FirebaseConfigSta
   }
 }
 
-export async function syncSaveSettings(settings: PlanSettings, config: FirebaseConfigState) {
+export async function syncSaveSettings(settings: PlanSettings, config: FirebaseConfigState, uid?: string) {
   if (config.useCloudFirestore && dbInstance) {
     try {
-      const docRef = doc(dbInstance, 'settings', 'user_plan');
+      const path = uid ? `users/${uid}/settings` : 'settings';
+      const docRef = doc(dbInstance, path, 'user_plan');
       await setDoc(docRef, settings);
     } catch (e) {
       console.warn('Firestore settings save error:', e);
@@ -125,10 +258,11 @@ export async function syncSaveSettings(settings: PlanSettings, config: FirebaseC
   }
 }
 
-export async function syncSaveCoaching(report: DailyCoachingReport, config: FirebaseConfigState) {
+export async function syncSaveCoaching(report: DailyCoachingReport, config: FirebaseConfigState, uid?: string) {
   if (config.useCloudFirestore && dbInstance) {
     try {
-      const docRef = doc(dbInstance, 'coaching_reports', report.id);
+      const path = uid ? `users/${uid}/coaching_reports` : 'coaching_reports';
+      const docRef = doc(dbInstance, path, report.id);
       await setDoc(docRef, report);
     } catch (e) {
       console.warn('Firestore coaching save error:', e);

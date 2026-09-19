@@ -1,19 +1,19 @@
 import { AppVersionInfo } from '../types/journal';
 
 export const CURRENT_APP_VERSION: AppVersionInfo = {
-  version: '1.0.1',
-  versionCode: 2,
+  version: '1.0.2',
+  versionCode: 3,
   releaseDate: '2026-09-19',
-  title: 'Trading Journal Pro v1.0.1',
+  title: 'Trading Journal Pro v1.0.2',
   changelog: [
+    'Fitur Registrasi & Login Trader (Firebase Authentication)',
+    'Halaman Pengaturan Profil Trader, Broker & Tipe Akun',
+    'Ikon Launcher Android resmi dan logo header disesuaikan',
+    'Pembersihan teks Firestore di header Trade Journal',
     'Google Cloud Run production deployment live',
-    'Firebase Firestore Jakarta (asia-southeast2) realtime sync',
-    'Compound Planner with Monthly Recurring Deposit',
-    'Dynamic Lot Compounding & Risk Engine',
-    '05:00 AM Automated Analysis & Coaching Center',
-    'Minimalist Dropdown & Android First-install Onboarding'
+    'Firebase Firestore Jakarta (asia-southeast2) realtime sync'
   ],
-  downloadUrl: 'https://github.com/masbeng96/smarttradingjournal/releases/download/v1.0.1/TradingJournal-v1.0.1.apk',
+  downloadUrl: 'https://github.com/masbeng96/smarttradingjournal/releases/download/v1.0.2/TradingJournal-v1.0.2.apk',
   mandatory: false,
 };
 
