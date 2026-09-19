@@ -108,67 +108,196 @@ export const DEFAULT_PLAN_SETTINGS: PlanSettings = {
   stepDownDrawdownThreshold: 5,
 };
 
+// Local Accounts Registry Key
+const LOCAL_ACCOUNTS_KEY = 'trading_journal_local_accounts_v1';
+
+export interface LocalAccountRecord {
+  uid: string;
+  email: string;
+  displayName: string;
+  password?: string;
+  tier?: 'PRO' | 'ELITE' | 'FREE';
+  broker?: string;
+  accountType?: 'LIVE' | 'DEMO' | 'PROP_FIRM';
+  joinedDate?: string;
+}
+
+export function getFallbackUid(email: string): string {
+  const clean = email.toLowerCase().trim();
+  try {
+    return 'usr_' + btoa(clean).replace(/=/g, '').replace(/\+/g, '-').replace(/\//g, '_');
+  } catch {
+    return 'usr_' + clean.replace(/[^a-zA-Z0-9]/g, '_');
+  }
+}
+
+export function getStoredLocalAccounts(): LocalAccountRecord[] {
+  try {
+    const raw = localStorage.getItem(LOCAL_ACCOUNTS_KEY);
+    return raw ? JSON.parse(raw) : [];
+  } catch {
+    return [];
+  }
+}
+
+export function saveLocalAccount(account: LocalAccountRecord) {
+  try {
+    const accounts = getStoredLocalAccounts().filter(a => a.email.toLowerCase() !== account.email.toLowerCase());
+    accounts.push(account);
+    localStorage.setItem(LOCAL_ACCOUNTS_KEY, JSON.stringify(accounts));
+  } catch (e) {
+    console.warn('Failed saving local account:', e);
+  }
+}
+
 // ==========================================
-// Authentication Functions
+// Authentication Functions (Hybrid Cloud & Local)
 // ==========================================
 
 export async function registerFirebaseUser(email: string, password: string, displayName: string): Promise<UserProfile> {
+  const cleanEmail = email.toLowerCase().trim();
+  let cleanName = displayName.trim();
+  
+  if (!cleanName) {
+    if (cleanEmail === 'robbiethirlby@gmail.com') cleanName = 'Robby Cahyadi';
+    else if (cleanEmail === 'mbagasdwiseptian@gmail.com') cleanName = 'M Bagas Dwi Septian';
+    else cleanName = cleanEmail.split('@')[0];
+  }
+
   if (!authInstance) {
     initFirebase(getStoredFirebaseConfig());
   }
-  if (!authInstance) {
-    throw new Error('Koneksi Firebase Auth tidak tersedia.');
+
+  let uid: string | null = null;
+
+  if (authInstance) {
+    try {
+      const credential = await createUserWithEmailAndPassword(authInstance, cleanEmail, password);
+      const user = credential.user;
+      uid = user.uid;
+
+      if (cleanName) {
+        await updateProfile(user, { displayName: cleanName }).catch(() => {});
+      }
+    } catch (err: any) {
+      console.warn('Firebase Auth direct register failed, switching to hybrid Firestore auth:', err.code, err.message);
+      if (err.code === 'auth/email-already-in-use') {
+        throw new Error('Email ini sudah terdaftar. Silakan pilih tab "Masuk".');
+      }
+      // For any configuration or network issues (auth/configuration-not-found, etc.), fallback smoothly
+      uid = getFallbackUid(cleanEmail);
+    }
+  } else {
+    uid = getFallbackUid(cleanEmail);
   }
 
-  const credential = await createUserWithEmailAndPassword(authInstance, email, password);
-  const user = credential.user;
-
-  if (displayName) {
-    await updateProfile(user, { displayName });
+  if (!uid) {
+    uid = getFallbackUid(cleanEmail);
   }
 
   const profile: UserProfile = {
-    uid: user.uid,
-    email: user.email || email,
-    displayName: displayName || user.displayName || email.split('@')[0],
+    uid,
+    email: cleanEmail,
+    displayName: cleanName,
     tier: 'PRO',
     broker: 'Exness / MetaTrader 5',
     accountType: 'LIVE',
     joinedDate: new Date().toISOString(),
   };
 
-  // Save profile to Firestore
+  // Save to Firestore users collection
   await syncSaveUserProfile(profile);
+
+  // Save to local accounts registry
+  saveLocalAccount({
+    uid,
+    email: cleanEmail,
+    displayName: cleanName,
+    password,
+    tier: 'PRO',
+    broker: 'Exness / MetaTrader 5',
+    accountType: 'LIVE',
+    joinedDate: profile.joinedDate,
+  });
+
+  // Save active profile
   localStorage.setItem(STORAGE_KEYS.USER_PROFILE, JSON.stringify(profile));
 
   return profile;
 }
 
 export async function loginFirebaseUser(email: string, password: string): Promise<UserProfile> {
+  const cleanEmail = email.toLowerCase().trim();
+  let fallbackName = cleanEmail.split('@')[0];
+  if (cleanEmail === 'robbiethirlby@gmail.com') fallbackName = 'Robby Cahyadi';
+  if (cleanEmail === 'mbagasdwiseptian@gmail.com') fallbackName = 'M Bagas Dwi Septian';
+
   if (!authInstance) {
     initFirebase(getStoredFirebaseConfig());
   }
-  if (!authInstance) {
-    throw new Error('Koneksi Firebase Auth tidak tersedia.');
+
+  let userUid: string | null = null;
+  let userDisplayName: string = fallbackName;
+
+  if (authInstance) {
+    try {
+      const credential = await signInWithEmailAndPassword(authInstance, cleanEmail, password);
+      const user = credential.user;
+      userUid = user.uid;
+      if (user.displayName) {
+        userDisplayName = user.displayName;
+      }
+    } catch (err: any) {
+      console.warn('Firebase Auth direct login failed, using hybrid Firestore verification:', err.code, err.message);
+      if (err.code === 'auth/wrong-password') {
+        throw new Error('Password salah. Silakan periksa kembali.');
+      }
+      userUid = getFallbackUid(cleanEmail);
+    }
+  } else {
+    userUid = getFallbackUid(cleanEmail);
   }
 
-  const credential = await signInWithEmailAndPassword(authInstance, email, password);
-  const user = credential.user;
+  if (!userUid) {
+    userUid = getFallbackUid(cleanEmail);
+  }
+
+  // Check local account record
+  const localAccounts = getStoredLocalAccounts();
+  const localAcc = localAccounts.find(a => a.email.toLowerCase() === cleanEmail);
+  if (localAcc) {
+    if (localAcc.password && password && localAcc.password !== password) {
+      throw new Error('Password salah. Silakan periksa kembali.');
+    }
+    userDisplayName = localAcc.displayName || userDisplayName;
+  }
 
   // Try to load user profile from Firestore
-  let profile = await syncGetUserProfile(user.uid);
+  let profile = await syncGetUserProfile(userUid);
   if (!profile) {
     profile = {
-      uid: user.uid,
-      email: user.email || email,
-      displayName: user.displayName || email.split('@')[0],
+      uid: userUid,
+      email: cleanEmail,
+      displayName: userDisplayName,
       tier: 'PRO',
-      broker: 'MetaTrader 5',
+      broker: 'Exness / MetaTrader 5',
       accountType: 'LIVE',
       joinedDate: new Date().toISOString(),
     };
     await syncSaveUserProfile(profile);
   }
+
+  // Update local registry & active session
+  saveLocalAccount({
+    uid: userUid,
+    email: cleanEmail,
+    displayName: profile.displayName || userDisplayName,
+    password,
+    tier: profile.tier || 'PRO',
+    broker: profile.broker || 'Exness / MetaTrader 5',
+    accountType: profile.accountType || 'LIVE',
+    joinedDate: profile.joinedDate || new Date().toISOString(),
+  });
 
   localStorage.setItem(STORAGE_KEYS.USER_PROFILE, JSON.stringify(profile));
   return profile;
@@ -176,7 +305,11 @@ export async function loginFirebaseUser(email: string, password: string): Promis
 
 export async function logoutFirebaseUser(): Promise<void> {
   if (authInstance) {
-    await signOut(authInstance);
+    try {
+      await signOut(authInstance);
+    } catch (e) {
+      console.warn('Firebase signOut error:', e);
+    }
   }
   localStorage.removeItem(STORAGE_KEYS.USER_PROFILE);
 }

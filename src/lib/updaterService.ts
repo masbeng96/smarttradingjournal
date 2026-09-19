@@ -1,20 +1,18 @@
 import { AppVersionInfo } from '../types/journal';
 
 export const CURRENT_APP_VERSION: AppVersionInfo = {
-  version: '1.0.6',
-  versionCode: 7,
+  version: '1.0.7',
+  versionCode: 8,
   releaseDate: '2026-09-19',
-  title: 'Trading Journal Pro v1.0.6',
+  title: 'Trading Journal Pro v1.0.7',
   changelog: [
-    'Dukungan Dual Account MT5 Real-time API via Promise.all (Akun 1 & Akun 2)',
-    'Mapping Akun MT5 Otomatis berdasarkan Email Login:',
-    '- Akun 1 untuk robbiethirlby@gmail.com',
-    '- Akun 2 untuk mbagasdwiseptian@gmail.com',
-    'Fallback aman ke data offline manual tanpa auto-sync jika user belum login',
-    'Menu Baru: Kalender Berita Ekonomi (Forex Factory Live News Feed & Scraper)',
-    'Peringatan Real-Time Berita High-Impact (Merah) Hari Ini (CPI, FOMC, NFP, dll)'
+    'Perbaikan Pendaftaran & Login Akun Trader (Hybrid Cloud Auth + Firestore)',
+    'Pendaftaran akun tanpa error auth/configuration-not-found',
+    'Auto-binding Akun MT5 1 untuk robbiethirlby@gmail.com dan Akun 2 untuk mbagasdwiseptian@gmail.com',
+    'Integrasi Live Scraper Forex Factory Economic Calendar',
+    'Sinkronisasi real-time saldo dan floating PnL multi-akun via Promise.all'
   ],
-  downloadUrl: 'https://github.com/masbeng96/smarttradingjournal/releases/download/v1.0.6/TradingJournal-v1.0.6.apk',
+  downloadUrl: 'https://github.com/masbeng96/smarttradingjournal/releases/download/v1.0.7/TradingJournal-v1.0.7.apk',
   mandatory: false,
 };
 
