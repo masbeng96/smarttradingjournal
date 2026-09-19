@@ -200,22 +200,19 @@ export const JournalProvider: React.FC<{ children: React.ReactNode }> = ({ child
       setMt5Account2(account2);
 
       // Bind the active account based on logged-in user email
-      if (assignedAccountId === 1) {
-        setMt5Data(account1.isConnected ? account1 : null);
-        if (!account1.isConnected) {
-          setMt5Error(account1.error || 'Gagal memuat Akun 1 MT5');
-        } else {
-          setMt5Error(null);
-        }
-      } else if (assignedAccountId === 2) {
-        setMt5Data(account2.isConnected ? account2 : null);
-        if (!account2.isConnected) {
-          setMt5Error(account2.error || 'Gagal memuat Akun 2 MT5');
-        } else {
-          setMt5Error(null);
-        }
+      const activeAccount = assignedAccountId === 1 ? account1 : account2;
+      if (activeAccount.isConnected) {
+        setMt5Data(activeAccount);
+        setMt5Error(null);
+      } else {
+        setMt5Data(null);
+        setMt5Error(activeAccount.error || `Gagal memuat Akun ${assignedAccountId} MT5`);
       }
     } catch (error: any) {
+      if (error?.name === 'AbortError' || error?.message?.includes('aborted')) {
+        // Abort cancellation ignored silently
+        return;
+      }
       console.error("Fetch API Error: ", error);
       const rawError = error?.name
         ? `${error.name}: ${error.message || String(error)}`

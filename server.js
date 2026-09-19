@@ -39,16 +39,12 @@ app.get('/api/version', (req, res) => {
 app.get(['/api/mt5/account/:id?', '/api/account/:id?'], async (req, res) => {
   const accountId = req.params.id || '1';
   try {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => controller.abort(), 4000);
     const mt5Res = await fetch(`http://202.155.94.173/api/account/${accountId}`, {
       headers: {
         'x-api-key': 'TokenRahasia2026',
         'Accept': 'application/json'
-      },
-      signal: controller.signal
+      }
     });
-    clearTimeout(timeout);
     if (!mt5Res.ok) {
       return res.status(200).json({ 
         akun: `Akun ${accountId}`,

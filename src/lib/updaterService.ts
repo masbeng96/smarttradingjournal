@@ -1,16 +1,16 @@
 import { AppVersionInfo } from '../types/journal';
 
 export const CURRENT_APP_VERSION: AppVersionInfo = {
-  version: '1.0.11',
-  versionCode: 12,
+  version: '1.0.12',
+  versionCode: 13,
   releaseDate: '2026-09-19',
-  title: 'Trading Journal Pro v1.0.11',
+  title: 'Trading Journal Pro v1.0.12',
   changelog: [
-    "Menampilkan pesan error asli sistem langsung dari catch(error) (error.message / error.name)",
-    "Penambahan console.error('Fetch API Error: ', error) untuk inspeksi DevTools",
-    "Pembaruan proxy backend server.js agar meneruskan error asli server/jaringan"
+    "Hapus logika AbortController dari fetch MT5 agar request jaringan selesai tanpa interupsi",
+    "Abaikan AbortError secara diam-diam tanpa memicu error di UI",
+    "Binding data balance, equity, margin, dan floating PnL dari JSON response ke state secara langsung"
   ],
-  downloadUrl: 'https://github.com/masbeng96/smarttradingjournal/releases/download/v1.0.11/TradingJournal-v1.0.11.apk',
+  downloadUrl: 'https://github.com/masbeng96/smarttradingjournal/releases/download/v1.0.12/TradingJournal-v1.0.12.apk',
   mandatory: false,
 };
 

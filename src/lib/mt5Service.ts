@@ -51,17 +51,9 @@ export async function fetchSingleMT5Account(accountId: 1 | 2 = 1): Promise<MT5Ac
     endpointsToTry = [relativeProxyUrl, directApiProxy, directUrl, cloudProxyUrl];
   }
 
-  const headers: Record<string, string> = {
-    'x-api-key': 'TokenRahasia2026',
-    'Accept': 'application/json',
-  };
-
   const errorLogs: string[] = [];
 
   for (const endpoint of endpointsToTry) {
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), MT5_CONFIG.REQUEST_TIMEOUT_MS);
-
     try {
       const response = await fetch(endpoint, {
         method: 'GET',
@@ -70,10 +62,7 @@ export async function fetchSingleMT5Account(accountId: 1 | 2 = 1): Promise<MT5Ac
           'Accept': 'application/json',
         },
         cache: 'no-store',
-        signal: controller.signal,
       });
-
-      clearTimeout(timeoutId);
 
       if (!response.ok) {
         errorLogs.push(`[${endpoint}] HTTP ${response.status} (${response.statusText || 'Error'})`);
@@ -86,10 +75,10 @@ export async function fetchSingleMT5Account(accountId: 1 | 2 = 1): Promise<MT5Ac
       if (data.isConnected === false) {
         return {
           akun: data.akun || `Akun ${accountId}`,
-          balance: Number(data.balance ?? 0),
-          equity: Number(data.equity ?? 0),
+          balance: Number(data.balance ?? data.saldo ?? 0),
+          equity: Number(data.equity ?? data.balance ?? 0),
           margin: Number(data.margin ?? 0),
-          floating_pnl: Number(data.floating_pnl ?? 0),
+          floating_pnl: Number(data.floating_pnl ?? data.floatingPnl ?? data.profit ?? 0),
           isConnected: false,
           error: data.error || `Server MT5 mengembalikan isConnected=false (${endpoint})`,
         };
@@ -97,15 +86,18 @@ export async function fetchSingleMT5Account(accountId: 1 | 2 = 1): Promise<MT5Ac
 
       return {
         akun: data.akun || `Akun ${accountId}`,
-        balance: Number(data.balance ?? 0),
-        equity: Number(data.equity ?? 0),
+        balance: Number(data.balance ?? data.saldo ?? 0),
+        equity: Number(data.equity ?? data.balance ?? 0),
         margin: Number(data.margin ?? 0),
-        floating_pnl: Number(data.floating_pnl ?? 0),
+        floating_pnl: Number(data.floating_pnl ?? data.floatingPnl ?? data.profit ?? 0),
         lastUpdated: new Date().toLocaleTimeString('id-ID'),
         isConnected: true,
       };
     } catch (error: any) {
-      clearTimeout(timeoutId);
+      if (error?.name === 'AbortError' || error?.message?.includes('aborted')) {
+        // Abort cancellation ignored silently
+        continue;
+      }
       console.error("Fetch API Error: ", error);
       const rawDetail = error?.name
         ? `${error.name}: ${error.message || String(error)}`
