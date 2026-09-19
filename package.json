@@ -1,0 +1,48 @@
+{
+  "name": "trading-journal-compound",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "tsc && vite build",
+    "preview": "vite preview",
+    "start": "node server.js",
+    "cap:sync": "npx @capacitor/cli sync",
+    "cap:android": "npx @capacitor/cli open android",
+    "cap:copy": "npx @capacitor/cli copy android",
+    "build:apk": "npm run build && npx @capacitor/cli sync android"
+  },
+  "dependencies": {
+    "@capacitor/android": "^6.1.2",
+    "@capacitor/app": "^6.0.1",
+    "@capacitor/cli": "^6.1.2",
+    "@capacitor/core": "^6.1.2",
+    "@capacitor/haptics": "^6.0.1",
+    "@capacitor/local-notifications": "^6.0.1",
+    "@capacitor/status-bar": "^6.0.1",
+    "canvas-confetti": "^1.9.3",
+    "clsx": "^2.1.1",
+    "express": "^4.21.0",
+    "firebase": "^10.13.1",
+    "framer-motion": "^11.5.4",
+    "lucide-react": "^0.439.0",
+    "react": "^18.3.1",
+    "react-dom": "^18.3.1",
+    "recharts": "^2.12.7",
+    "tailwind-merge": "^2.5.2",
+    "tailwindcss-animate": "^1.0.7"
+  },
+  "devDependencies": {
+    "@types/canvas-confetti": "^1.6.4",
+    "@types/node": "^22.5.4",
+    "@types/react": "^18.3.5",
+    "@types/react-dom": "^18.3.0",
+    "@vitejs/plugin-react": "^4.3.1",
+    "autoprefixer": "^10.4.20",
+    "postcss": "^8.4.45",
+    "tailwindcss": "^3.4.10",
+    "typescript": "^5.5.3",
+    "vite": "^5.4.3"
+  }
+}
