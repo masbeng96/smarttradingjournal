@@ -1,20 +1,20 @@
 import { AppVersionInfo } from '../types/journal';
 
 export const CURRENT_APP_VERSION: AppVersionInfo = {
-  version: '1.0.5',
-  versionCode: 6,
+  version: '1.0.6',
+  versionCode: 7,
   releaseDate: '2026-09-19',
-  title: 'Trading Journal Pro v1.0.5',
+  title: 'Trading Journal Pro v1.0.6',
   changelog: [
+    'Dukungan Dual Account MT5 Real-time API via Promise.all (Akun 1 & Akun 2)',
+    'Mapping Akun MT5 Otomatis berdasarkan Email Login:',
+    '- Akun 1 untuk robbiethirlby@gmail.com',
+    '- Akun 2 untuk mbagasdwiseptian@gmail.com',
+    'Fallback aman ke data offline manual tanpa auto-sync jika user belum login',
     'Menu Baru: Kalender Berita Ekonomi (Forex Factory Live News Feed & Scraper)',
-    'Peringatan Real-Time Berita High-Impact (Merah) Hari Ini (CPI, FOMC, NFP, dll)',
-    'Filter multi-kategori: Tingkat Impact, Mata Uang (USD, EUR, GBP, JPY, dll) & Tanggal',
-    'Konversi otomatis waktu rilis berita ke Waktu Indonesia Barat (WIB) & Countdown live',
-    'Integrasi Live MT5 Real-time API (Akun, Balance, Equity, Margin, Floating PnL)',
-    'Dukungan Android usesCleartextTraffic & Proxy Server untuk HTTP Endpoint',
-    'Tampilan Fullscreen Edge-to-Edge 100% di HP Android (tanpa border bingkai)'
+    'Peringatan Real-Time Berita High-Impact (Merah) Hari Ini (CPI, FOMC, NFP, dll)'
   ],
-  downloadUrl: 'https://github.com/masbeng96/smarttradingjournal/releases/download/v1.0.5/TradingJournal-v1.0.5.apk',
+  downloadUrl: 'https://github.com/masbeng96/smarttradingjournal/releases/download/v1.0.6/TradingJournal-v1.0.6.apk',
   mandatory: false,
 };
 

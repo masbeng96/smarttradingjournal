@@ -24,15 +24,20 @@ app.get('/api/version', (req, res) => {
   res.sendFile(path.join(__dirname, 'public', 'version.json'));
 });
 
-// Proxy for MT5 REST API endpoint (avoids mixed content & CORS issues on HTTPS web)
-app.get('/api/mt5/account', async (req, res) => {
+// Proxy for MT5 REST API endpoints (accounts 1 and 2)
+app.get('/api/mt5/account/:id?', async (req, res) => {
   try {
-    const mt5Res = await fetch('http://202.155.94.173/api/account/1', {
+    const accountId = req.params.id || '1';
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 6000);
+    const mt5Res = await fetch(`http://202.155.94.173/api/account/${accountId}`, {
       headers: {
         'x-api-key': 'TokenRahasia2026',
         'Accept': 'application/json'
-      }
+      },
+      signal: controller.signal
     });
+    clearTimeout(timeout);
     if (!mt5Res.ok) {
       return res.status(mt5Res.status).json({ error: 'MT5 Server returned ' + mt5Res.status });
     }
@@ -46,12 +51,16 @@ app.get('/api/mt5/account', async (req, res) => {
 app.get('/api/account/:id', async (req, res) => {
   try {
     const accountId = req.params.id || '1';
+    const controller = new AbortController();
+    const timeout = setTimeout(() => controller.abort(), 6000);
     const mt5Res = await fetch(`http://202.155.94.173/api/account/${accountId}`, {
       headers: {
         'x-api-key': 'TokenRahasia2026',
         'Accept': 'application/json'
-      }
+      },
+      signal: controller.signal
     });
+    clearTimeout(timeout);
     if (!mt5Res.ok) {
       return res.status(mt5Res.status).json({ error: 'MT5 Server returned ' + mt5Res.status });
     }

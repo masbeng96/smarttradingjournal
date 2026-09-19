@@ -26,7 +26,11 @@ import {
   logoutFirebaseUser,
   subscribeAuthState
 } from '../lib/firebase';
-import { fetchMT5AccountData, MT5_CONFIG } from '../lib/mt5Service';
+import { 
+  fetchBothMT5Accounts, 
+  getAssignedMT5AccountId, 
+  MT5_CONFIG 
+} from '../lib/mt5Service';
 import { generateDailyCoachingReport, isFiveAmAnalysisDue } from '../lib/dailyAnalysisEngine';
 import { calculateRecommendedLot, generateLotMilestoneLadder } from '../lib/lotCalculator';
 import { checkForAppUpdates, CURRENT_APP_VERSION } from '../lib/updaterService';
@@ -42,8 +46,11 @@ interface JournalContextType {
   deleteTrade: (id: string) => void;
   updateTrade: (id: string, trade: Partial<TradeEntry>) => void;
   
-  // MT5 Real-time Data
+  // MT5 Real-time Multi-Account Data
+  mt5Account1: MT5AccountData | null;
+  mt5Account2: MT5AccountData | null;
   mt5Data: MT5AccountData | null;
+  assignedAccountId: (1 | 2) | null;
   isMT5Loading: boolean;
   mt5Error: string | null;
   refreshMT5Data: () => Promise<void>;
@@ -165,17 +172,43 @@ export const JournalProvider: React.FC<{ children: React.ReactNode }> = ({ child
   });
   const [isAuthModalOpen, setIsAuthModalOpen] = useState<boolean>(false);
 
-  // 6. MT5 Real-time Account State
+  // 6. MT5 Real-time Multi-Account States (Separate states for Akun 1 & Akun 2)
+  const [mt5Account1, setMt5Account1] = useState<MT5AccountData | null>(null);
+  const [mt5Account2, setMt5Account2] = useState<MT5AccountData | null>(null);
   const [mt5Data, setMt5Data] = useState<MT5AccountData | null>(null);
   const [isMT5Loading, setIsMT5Loading] = useState<boolean>(false);
   const [mt5Error, setMt5Error] = useState<string | null>(null);
 
+  // Check assigned MT5 Account (Akun 1: robbiethirlby@gmail.com, Akun 2: mbagasdwiseptian@gmail.com)
+  const assignedAccountId = useMemo(() => {
+    return getAssignedMT5AccountId(userProfile?.email);
+  }, [userProfile?.email]);
+
   const refreshMT5Data = async () => {
+    // If user is not logged in or email is not in assigned MT5 list, do NOT sync MT5
+    if (!assignedAccountId) {
+      setMt5Data(null);
+      setMt5Error(null);
+      return;
+    }
+
     setIsMT5Loading(true);
     try {
-      const data = await fetchMT5AccountData();
-      setMt5Data(data);
-      setMt5Error(null);
+      // Pull data from TWO sources simultaneously using Promise.all
+      const { account1, account2 } = await fetchBothMT5Accounts();
+      setMt5Account1(account1);
+      setMt5Account2(account2);
+
+      // Bind the active account based on logged-in user email
+      if (assignedAccountId === 1) {
+        setMt5Data(account1.isConnected ? account1 : null);
+        if (!account1.isConnected) setMt5Error(account1.error || 'Gagal memuat Akun 1 MT5');
+        else setMt5Error(null);
+      } else if (assignedAccountId === 2) {
+        setMt5Data(account2.isConnected ? account2 : null);
+        if (!account2.isConnected) setMt5Error(account2.error || 'Gagal memuat Akun 2 MT5');
+        else setMt5Error(null);
+      }
     } catch (err: any) {
       setMt5Error(err.message || 'Gagal memuat data MT5');
     } finally {
@@ -183,12 +216,17 @@ export const JournalProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   };
 
-  // Poll MT5 Real-time data on mount and interval
+  // Auto-sync MT5 data every 5 seconds ONLY if user is logged in with an assigned account
   useEffect(() => {
-    refreshMT5Data();
-    const interval = setInterval(refreshMT5Data, MT5_CONFIG.POLL_INTERVAL_MS);
-    return () => clearInterval(interval);
-  }, []);
+    if (assignedAccountId) {
+      refreshMT5Data();
+      const interval = setInterval(refreshMT5Data, MT5_CONFIG.POLL_INTERVAL_MS);
+      return () => clearInterval(interval);
+    } else {
+      setMt5Data(null);
+      setMt5Error(null);
+    }
+  }, [assignedAccountId]);
 
   // 7. Firebase Config
   const [firebaseConfig, setFirebaseConfig] = useState<FirebaseConfigState>(getStoredFirebaseConfig);
@@ -358,11 +396,12 @@ export const JournalProvider: React.FC<{ children: React.ReactNode }> = ({ child
   }, [trades]);
 
   const currentEquity = useMemo(() => {
-    if (mt5Data && mt5Data.isConnected) {
+    if (assignedAccountId && mt5Data && mt5Data.isConnected) {
       return Number(((mt5Data.equity !== undefined && mt5Data.equity !== null) ? mt5Data.equity : mt5Data.balance ?? 0).toFixed(2));
     }
+    // Fallback to default local journal equity if not logged in or not assigned
     return Math.max(0, Number((settings.initialCapital + totalRealizedPnl).toFixed(2)));
-  }, [settings.initialCapital, totalRealizedPnl, mt5Data]);
+  }, [settings.initialCapital, totalRealizedPnl, mt5Data, assignedAccountId]);
 
   // Win Rate and stats
   const { winRate, profitFactor } = useMemo(() => {
@@ -536,7 +575,10 @@ export const JournalProvider: React.FC<{ children: React.ReactNode }> = ({ child
       addTrade,
       deleteTrade,
       updateTrade,
+      mt5Account1,
+      mt5Account2,
       mt5Data,
+      assignedAccountId,
       isMT5Loading,
       mt5Error,
       refreshMT5Data,

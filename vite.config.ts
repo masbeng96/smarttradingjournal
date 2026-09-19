@@ -17,7 +17,7 @@ export default defineConfig({
       '/api/mt5/account': {
         target: 'http://202.155.94.173',
         changeOrigin: true,
-        rewrite: (path) => path.replace(/^\/api\/mt5\/account/, '/api/account/1'),
+        rewrite: (path) => path.replace(/^\/api\/mt5\/account/, '/api/account'),
         headers: {
           'x-api-key': 'TokenRahasia2026',
         },

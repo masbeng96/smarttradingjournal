@@ -39,6 +39,9 @@ export const OverviewDashboard: React.FC = () => {
     setActiveTab,
     setIsNewTradeModalOpen,
     mt5Data,
+    assignedAccountId,
+    userProfile,
+    setIsAuthModalOpen,
     isMT5Loading,
     mt5Error,
     refreshMT5Data
@@ -97,36 +100,49 @@ export const OverviewDashboard: React.FC = () => {
               </span>
               
               {/* MT5 Status Badge */}
-              {mt5Data?.isConnected ? (
-                <div className="flex items-center space-x-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                  <span className="relative flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                  </span>
-                  <span>MT5 Live: {mt5Data.akun}</span>
-                </div>
-              ) : isMT5Loading ? (
-                <div className="flex items-center space-x-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
-                  <span>Syncing...</span>
-                </div>
-              ) : mt5Error ? (
-                <div className="flex items-center space-x-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-rose-500/20 text-rose-300 border border-rose-500/30">
-                  <WifiOff className="w-2.5 h-2.5" />
-                  <span>MT5 Offline</span>
-                </div>
-              ) : null}
+              {assignedAccountId ? (
+                mt5Data?.isConnected ? (
+                  <div className="flex items-center space-x-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                    <span className="relative flex h-2 w-2">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                    </span>
+                    <span>MT5 Live: Akun {assignedAccountId}</span>
+                  </div>
+                ) : isMT5Loading ? (
+                  <div className="flex items-center space-x-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+                    <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+                    <span>Syncing Akun {assignedAccountId}...</span>
+                  </div>
+                ) : mt5Error ? (
+                  <div className="flex items-center space-x-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-rose-500/20 text-rose-300 border border-rose-500/30">
+                    <WifiOff className="w-2.5 h-2.5" />
+                    <span>Akun {assignedAccountId} Offline</span>
+                  </div>
+                ) : null
+              ) : (
+                <button
+                  onClick={() => setIsAuthModalOpen(true)}
+                  className="flex items-center space-x-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-800 text-slate-400 hover:text-emerald-300 hover:bg-slate-700 border border-slate-700 transition-all"
+                  title="Login untuk mengaktifkan Auto-Sync MT5"
+                >
+                  <span>Manual Offline</span>
+                  <span className="text-[9px] text-emerald-400 font-bold ml-0.5">(Login MT5)</span>
+                </button>
+              )}
             </div>
 
             <div className="flex items-center space-x-1.5">
-              <button
-                onClick={() => refreshMT5Data()}
-                disabled={isMT5Loading}
-                title="Refresh Data MT5 Real-Time"
-                className="p-1 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-white transition-all disabled:opacity-50"
-              >
-                <RotateCcw className={`w-3.5 h-3.5 ${isMT5Loading ? 'animate-spin text-emerald-400' : ''}`} />
-              </button>
+              {assignedAccountId && (
+                <button
+                  onClick={() => refreshMT5Data()}
+                  disabled={isMT5Loading}
+                  title="Refresh Data MT5 Real-Time"
+                  className="p-1 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-white transition-all disabled:opacity-50"
+                >
+                  <RotateCcw className={`w-3.5 h-3.5 ${isMT5Loading ? 'animate-spin text-emerald-400' : ''}`} />
+                </button>
+              )}
 
               <div className={`flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-xs font-bold ${
                 (mt5Data ? mt5Data.floating_pnl : growthPercent) >= 0 
@@ -149,9 +165,13 @@ export const OverviewDashboard: React.FC = () => {
             <div className="text-3xl font-black font-mono-num tracking-tight text-white glow-text-emerald">
               {formatCurrency(currentEquity, settings.currency)}
             </div>
-            {mt5Data?.isConnected && (
+            {assignedAccountId && mt5Data?.isConnected ? (
               <span className="text-[11px] text-emerald-400/90 font-mono-num font-semibold">
-                Auto-Sync Live 🟢
+                Auto-Sync Akun {assignedAccountId} 🟢
+              </span>
+            ) : (
+              <span className="text-[11px] text-slate-400 font-mono-num">
+                Data Default Manual
               </span>
             )}
           </div>
@@ -170,8 +190,10 @@ export const OverviewDashboard: React.FC = () => {
               <span className={`font-semibold font-mono-num text-xs ${
                 (mt5Data?.floating_pnl ?? 0) >= 0 ? 'text-emerald-400' : 'text-rose-400'
               }`}>
-                {(mt5Data?.floating_pnl ?? 0) >= 0 ? '+' : ''}
-                {formatCurrency(mt5Data?.floating_pnl ?? 0, settings.currency)}
+                {mt5Data 
+                  ? `${(mt5Data.floating_pnl ?? 0) >= 0 ? '+' : ''}${formatCurrency(mt5Data.floating_pnl ?? 0, settings.currency)}`
+                  : '$0.00 (Offline)'
+                }
               </span>
             </div>
 
@@ -197,10 +219,16 @@ export const OverviewDashboard: React.FC = () => {
           <div className="flex items-center justify-between text-[10px] text-slate-500 pt-0.5">
             <span className="flex items-center space-x-1">
               <Activity className="w-3 h-3 text-emerald-500/70" />
-              <span>Interval Polling: 5 detik</span>
+              <span>
+                {assignedAccountId 
+                  ? `Interval Polling: 5s • ${userProfile?.email} (Akun ${assignedAccountId})` 
+                  : 'Mode Offline (Tanpa Auto-Sync MT5)'}
+              </span>
             </span>
             <span>
-              {mt5Data?.lastUpdated ? `Terakhir update: ${mt5Data.lastUpdated}` : 'Menghubungkan...'}
+              {assignedAccountId
+                ? (mt5Data?.lastUpdated ? `Terakhir update: ${mt5Data.lastUpdated}` : 'Menghubungkan...')
+                : 'Login untuk Live Sync'}
             </span>
           </div>
         </div>
