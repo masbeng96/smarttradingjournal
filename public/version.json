@@ -12,6 +12,6 @@
     "Firebase Firestore Database Cloud Sync + Offline Persistence",
     "Over-The-Air (OTA) & In-App APK Live Update Pipeline"
   ],
-  "downloadUrl": "https://github.com/your-username/trading-journal-compound/releases/latest/download/app-release.apk",
+  "downloadUrl": "https://github.com/masbeng96/smarttradingjournal/releases/latest/download/TradingJournal-v1.0.0.apk",
   "mandatory": false
 }

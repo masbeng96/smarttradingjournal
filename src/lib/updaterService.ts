@@ -12,7 +12,7 @@ export const CURRENT_APP_VERSION: AppVersionInfo = {
     '05:00 AM Automated Analysis & Coaching Center',
     'Firebase Cloud Firestore Sync & Android APK compilation support'
   ],
-  downloadUrl: 'https://github.com/your-username/trading-journal-compound/releases/latest/download/app-release.apk',
+  downloadUrl: 'https://github.com/masbeng96/smarttradingjournal/releases/latest/download/TradingJournal-v1.0.0.apk',
   mandatory: false,
 };
 
