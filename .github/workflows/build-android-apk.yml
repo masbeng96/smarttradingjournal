@@ -50,19 +50,21 @@ jobs:
       - name: Copy & Rename APK
         run: |
           mkdir -p release-apk
-          cp android/app/build/outputs/apk/debug/app-debug.apk release-apk/TradingJournal-v1.0.0.apk
+          TAG_NAME="${{ github.ref_name }}"
+          [ -z "$TAG_NAME" ] && TAG_NAME="v1.0.0"
+          cp android/app/build/outputs/apk/debug/app-debug.apk release-apk/TradingJournal-${TAG_NAME}.apk
 
       - name: Upload APK as Workflow Artifact
         uses: actions/upload-artifact@v4
         with:
           name: TradingJournal-Android-APK
-          path: release-apk/TradingJournal-v1.0.0.apk
+          path: release-apk/*.apk
 
       - name: Create GitHub Release & Attach APK
         uses: softprops/action-gh-release@v2
         if: startsWith(github.ref, 'refs/tags/')
         with:
-          files: release-apk/TradingJournal-v1.0.0.apk
+          files: release-apk/*.apk
           name: Release ${{ github.ref_name }}
           draft: false
           prerelease: false
