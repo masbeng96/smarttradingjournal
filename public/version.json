@@ -1,17 +1,17 @@
 {
-  "version": "1.0.2",
-  "versionCode": 3,
+  "version": "1.0.3",
+  "versionCode": 4,
   "releaseDate": "2026-09-19",
   "minRequiredVersion": "1.0.0",
-  "title": "Trading Journal & Compound Planner Pro v1.0.2",
+  "title": "Trading Journal & Compound Planner Pro v1.0.3",
   "changelog": [
+    "Tampilan Fullscreen Edge-to-Edge 100% di HP Android (tanpa border bingkai)",
+    "Status Bar & Navigation Bar Android otomatis menyatu dengan UI gelap aplikasi",
     "Fitur Registrasi & Login Trader (Firebase Authentication)",
     "Halaman Pengaturan Profil Trader, Broker & Tipe Akun",
     "Ikon Launcher Android resmi dan logo header disesuaikan",
-    "Pembersihan teks Firestore di header Trade Journal",
-    "Google Cloud Run production deployment live",
-    "Firebase Firestore Jakarta (asia-southeast2) realtime sync"
+    "Pembersihan teks Firestore di header Trade Journal"
   ],
-  "downloadUrl": "https://github.com/masbeng96/smarttradingjournal/releases/download/v1.0.2/TradingJournal-v1.0.2.apk",
+  "downloadUrl": "https://github.com/masbeng96/smarttradingjournal/releases/download/v1.0.3/TradingJournal-v1.0.3.apk",
   "mandatory": false
 }

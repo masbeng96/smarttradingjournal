@@ -58,7 +58,7 @@ export const BottomNavigation: React.FC = () => {
 
   return (
     <nav aria-label="Bottom Navigation" className="fixed bottom-0 left-0 right-0 z-40 flex justify-center pointer-events-none">
-      <div className="w-full max-w-[440px] pointer-events-auto px-4 pb-4 pt-2">
+      <div className="w-full lg:max-w-[440px] pointer-events-auto px-4 pb-[max(1.25rem,env(safe-area-inset-bottom))] pt-2">
         <div className="bg-[#0b0f19]/95 backdrop-blur-2xl border border-slate-800/80 rounded-2xl p-1.5 shadow-[0_10px_30px_rgba(0,0,0,0.7)] flex items-center justify-between relative">
           {/* Left Tabs */}
           {leftTabs.map(renderNavTab)}

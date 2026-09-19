@@ -10,8 +10,8 @@ export const MobileFrame: React.FC<MobileFrameProps> = ({ children }) => {
   const { isMobileDeviceFrame, setIsMobileDeviceFrame } = useJournal();
 
   return (
-    <div className="min-h-screen bg-[#04070e] flex flex-col items-center justify-start text-slate-100 selection:bg-emerald-500/30">
-      {/* Desktop Helper Bar for Mobile Preview Toggle */}
+    <div className="min-h-screen w-full bg-[#070a12] text-slate-100 flex flex-col items-center justify-start selection:bg-emerald-500/30 overflow-x-hidden">
+      {/* Desktop Helper Bar for Mobile Preview Toggle (Only on wide desktop screens) */}
       <aside aria-label="Device view toggle" className="hidden lg:flex items-center justify-between w-full max-w-5xl px-6 py-2.5 text-xs text-slate-400 border-b border-slate-800/80 bg-[#070b14]/90 backdrop-blur-md sticky top-0 z-50">
         <div className="flex items-center space-x-2">
           <span className="inline-block w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
@@ -48,16 +48,16 @@ export const MobileFrame: React.FC<MobileFrameProps> = ({ children }) => {
         </div>
       </aside>
 
-      {/* Main Container */}
-      <main className={`w-full flex-1 flex justify-center ${isMobileDeviceFrame ? 'lg:py-8' : 'p-0'}`}>
+      {/* Main Container - Fullscreen 100% on Mobile / Phone Devices */}
+      <main className="w-full flex-1 flex justify-center p-0 m-0">
         <div
           className={`w-full transition-all duration-300 ${
             isMobileDeviceFrame
-              ? 'max-w-[440px] bg-[#070a12] lg:rounded-[42px] lg:border-[8px] lg:border-slate-800/90 lg:shadow-[0_25px_70px_rgba(0,0,0,0.8)] lg:ring-1 lg:ring-slate-700/50 min-h-screen lg:min-h-[890px] relative flex flex-col overflow-hidden'
-              : 'max-w-4xl bg-[#070a12] min-h-screen flex flex-col relative'
+              ? 'w-full lg:max-w-[440px] bg-[#070a12] lg:my-6 lg:rounded-[42px] lg:border-[8px] lg:border-slate-800/90 lg:shadow-[0_25px_70px_rgba(0,0,0,0.8)] lg:ring-1 lg:ring-slate-700/50 min-h-screen relative flex flex-col overflow-hidden'
+              : 'w-full max-w-5xl bg-[#070a12] min-h-screen flex flex-col relative'
           }`}
         >
-          {/* Mobile Speaker / Camera Bezel Notch on Desktop Frame */}
+          {/* Mobile Speaker / Camera Bezel Notch ONLY on Desktop preview */}
           {isMobileDeviceFrame && (
             <div className="hidden lg:flex justify-center pt-2.5 pb-1 bg-transparent z-40">
               <div className="w-24 h-4 bg-slate-900 rounded-full border border-slate-800/60 flex items-center justify-center space-x-2">
@@ -68,7 +68,7 @@ export const MobileFrame: React.FC<MobileFrameProps> = ({ children }) => {
           )}
 
           {/* Render Actual App Content */}
-          <div className="flex-1 flex flex-col w-full overflow-y-auto pb-24">
+          <div className="flex-1 flex flex-col w-full overflow-y-auto pb-28">
             {children}
           </div>
         </div>

@@ -4,8 +4,7 @@ import {
   Bell, 
   User, 
   Sparkles, 
-  ArrowUpCircle,
-  LogIn
+  ArrowUpCircle
 } from 'lucide-react';
 
 export const TopHeader: React.FC = () => {
@@ -13,7 +12,6 @@ export const TopHeader: React.FC = () => {
     unreadNotificationCount, 
     setIsNotificationDrawerOpen, 
     setIsSettingsModalOpen,
-    setIsAuthModalOpen,
     runDailyAnalysisManual,
     settings,
     updateSettings,
@@ -38,7 +36,7 @@ export const TopHeader: React.FC = () => {
   };
 
   return (
-    <header className="sticky top-0 z-30 w-full px-4 pt-4 pb-3 bg-[#070a12]/95 backdrop-blur-xl border-b border-slate-800/60 flex items-center justify-between">
+    <header className="sticky top-0 z-30 w-full px-4 pt-[max(1rem,env(safe-area-inset-top))] pb-3 bg-[#070a12]/95 backdrop-blur-xl border-b border-slate-800/60 flex items-center justify-between">
       {/* Brand & App Title */}
       <div className="flex items-center space-x-2.5">
         <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-emerald-500 to-cyan-500 p-0.5 shadow-glow-emerald flex items-center justify-center shrink-0">
@@ -62,7 +60,7 @@ export const TopHeader: React.FC = () => {
         <button
           onClick={toggleCurrency}
           title="Ganti Mata Uang (USD / IDR)"
-          className="px-2 py-1 rounded-xl bg-slate-900 border border-slate-800 text-[11px] font-mono font-semibold text-slate-300 hover:text-emerald-400 hover:border-emerald-500/30 transition-colors"
+          className="px-2.5 py-1 rounded-xl bg-slate-900 border border-slate-800 text-[11px] font-mono font-semibold text-slate-300 hover:text-emerald-400 hover:border-emerald-500/30 transition-colors"
         >
           {settings.currency}
         </button>
