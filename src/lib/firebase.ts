@@ -16,13 +16,18 @@ const FIREBASE_CONFIG_KEY = 'trading_journal_firebase_config';
 export function getStoredFirebaseConfig(): FirebaseConfigState {
   try {
     const raw = localStorage.getItem(FIREBASE_CONFIG_KEY);
-    if (raw) return JSON.parse(raw);
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (parsed.apiKey && parsed.projectId) return parsed;
+    }
   } catch (e) {
     // ignore
   }
   return {
+    apiKey: 'AIzaSyDOurewkXEshBxa5l43c2IRSNPWfqSnVoo',
     projectId: 'smarttrading-51b72',
     authDomain: 'smarttrading-51b72.firebaseapp.com',
+    storageBucket: 'smarttrading-51b72.firebasestorage.app',
     useCloudFirestore: true,
   };
 }
