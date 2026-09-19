@@ -21,7 +21,9 @@ export function getStoredFirebaseConfig(): FirebaseConfigState {
     // ignore
   }
   return {
-    useCloudFirestore: false,
+    projectId: 'smarttrading-51b72',
+    authDomain: 'smarttrading-51b72.firebaseapp.com',
+    useCloudFirestore: true,
   };
 }
 
