@@ -104,8 +104,8 @@ export const AuthModal: React.FC = () => {
         {/* Brand Header */}
         <div className="text-center space-y-2 pt-2">
           <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-emerald-500 to-cyan-500 p-0.5 mx-auto shadow-glow-emerald flex items-center justify-center">
-            <div className="w-full h-full bg-[#0b0f19] rounded-[14px] flex items-center justify-center overflow-hidden p-2">
-              <img src="/logo.svg" alt="Trade Journal Logo" className="w-full h-full object-contain" />
+            <div className="w-full h-full bg-[#0b0f19] rounded-[14px] flex items-center justify-center overflow-hidden">
+              <img src="/logo-trading.jpg" alt="Trade Journal Logo" className="w-full h-full object-cover" />
             </div>
           </div>
           <div>

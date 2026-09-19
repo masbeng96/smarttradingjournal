@@ -3,9 +3,9 @@
   "name": "Trading Journal & Compound Pro",
   "icons": [
     {
-      "src": "/logo.svg",
-      "sizes": "192x192 512x512",
-      "type": "image/svg+xml"
+      "src": "/logo-trading.jpg",
+      "sizes": "192x192 512x512 983x983",
+      "type": "image/jpeg"
     }
   ],
   "start_url": "/",

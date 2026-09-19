@@ -1,19 +1,15 @@
 import { AppVersionInfo } from '../types/journal';
 
 export const CURRENT_APP_VERSION: AppVersionInfo = {
-  version: '1.0.8',
-  versionCode: 9,
+  version: '1.0.9',
+  versionCode: 10,
   releaseDate: '2026-09-19',
-  title: 'Trading Journal Pro v1.0.8',
+  title: 'Trading Journal Pro v1.0.9',
   changelog: [
-    'Perbaikan Tarik API MT5 & Kalender Ekonomi di Aplikasi Android Native',
-    'Header Fixed/Sticky di bagian atas saat halaman di-scroll ke bawah',
-    'Pengaturan Tampilan: Switch On/Off Banner Kalender Berita Ekonomi di Overview',
-    "Pembersihan Badge Teks 'LIVE FF' pada Banner Berita",
-    'Pengaturan Notifikasi Alert: Trade Baru Dibuka, Trade Ditutup, SL Hit, dan TP Hit',
-    'Penyembunyian Tombol Pencatatan Entry Manual pada Mode Tamu (Otomatis Live MT5 saat Login)'
+    'Pembaruan Logo Baru (logo-trading.jpg) di seluruh antarmuka web, modal login/register, dan favicon',
+    'Pembaruan App Launcher Icon dan Splash Screen Android Native dengan logo trading resmi'
   ],
-  downloadUrl: 'https://github.com/masbeng96/smarttradingjournal/releases/download/v1.0.8/TradingJournal-v1.0.8.apk',
+  downloadUrl: 'https://github.com/masbeng96/smarttradingjournal/releases/download/v1.0.9/TradingJournal-v1.0.9.apk',
   mandatory: false,
 };
 

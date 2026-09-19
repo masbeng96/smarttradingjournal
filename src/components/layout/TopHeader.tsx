@@ -40,8 +40,8 @@ export const TopHeader: React.FC = () => {
       {/* Brand & App Title */}
       <div className="flex items-center space-x-2.5">
         <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-emerald-500 to-cyan-500 p-0.5 shadow-glow-emerald flex items-center justify-center shrink-0">
-          <div className="w-full h-full bg-[#0b0f19] rounded-[14px] flex items-center justify-center overflow-hidden p-1.5">
-            <img src="/logo.svg" alt="Trade Journal Logo" className="w-full h-full object-contain" />
+          <div className="w-full h-full bg-[#0b0f19] rounded-[14px] flex items-center justify-center overflow-hidden">
+            <img src="/logo-trading.jpg" alt="Trade Journal Logo" className="w-full h-full object-cover" />
           </div>
         </div>
         <div>
