@@ -8,8 +8,6 @@ import {
   ArrowRight, 
   CheckCircle2, 
   AlertCircle, 
-  ShieldCheck, 
-  Sparkles,
   Loader2
 } from 'lucide-react';
 
@@ -18,8 +16,7 @@ export const AuthModal: React.FC = () => {
     isAuthModalOpen, 
     setIsAuthModalOpen, 
     login, 
-    register,
-    userProfile 
+    register
   } = useJournal();
 
   const [tab, setTab] = useState<'LOGIN' | 'REGISTER'>('LOGIN');
@@ -90,43 +87,43 @@ export const AuthModal: React.FC = () => {
   };
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md overflow-y-auto animate-in fade-in duration-200">
-      <div className="w-full max-w-sm bg-[#0b0f19] border border-slate-800 rounded-3xl p-6 shadow-2xl relative my-auto space-y-5">
+    <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md overflow-y-auto animate-in fade-in duration-200">
+      <div className="w-full max-w-sm bg-white border border-[#E5E5E2] rounded-[32px] p-6 shadow-2xl relative my-auto space-y-5">
         
         {/* Close Button */}
         <button
           onClick={() => setIsAuthModalOpen(false)}
-          className="absolute top-4 right-4 w-8 h-8 rounded-full bg-slate-900 border border-slate-800 text-slate-400 hover:text-white flex items-center justify-center transition-colors"
+          className="absolute top-4 right-4 w-8 h-8 rounded-full bg-[#F2F2EF] border border-[#E5E5E2] text-[#737373] hover:text-[#0F0F0F] flex items-center justify-center transition-colors"
         >
           <X className="w-4 h-4" />
         </button>
 
         {/* Brand Header */}
         <div className="text-center space-y-2 pt-2">
-          <div className="w-12 h-12 rounded-2xl bg-gradient-to-tr from-emerald-500 to-cyan-500 p-0.5 mx-auto shadow-glow-emerald flex items-center justify-center">
-            <div className="w-full h-full bg-[#0b0f19] rounded-[14px] flex items-center justify-center overflow-hidden">
-              <img src="/logo-trading.jpg" alt="Trade Journal Logo" className="w-full h-full object-cover" />
+          <div className="w-12 h-12 rounded-2xl bg-[#0F0F0F] text-white p-0.5 mx-auto shadow-sm flex items-center justify-center">
+            <div className="w-full h-full bg-[#0F0F0F] rounded-[14px] flex items-center justify-center overflow-hidden">
+              <img src="/logo-trading.jpg" alt="Logo" className="w-full h-full object-cover" />
             </div>
           </div>
           <div>
-            <h3 className="text-base font-bold text-white tracking-tight">
+            <h3 className="text-base font-extrabold text-[#0F0F0F] tracking-tight">
               {tab === 'LOGIN' ? 'Masuk ke Akun Trader' : 'Daftar Akun Baru'}
             </h3>
-            <p className="text-[11px] text-slate-400">
-              Sinkronkan jurnal trading, target compound, & analisa AI Anda
+            <p className="text-[11px] text-[#737373]">
+              Sinkronkan jurnal trading & live sync MT5 Anda
             </p>
           </div>
         </div>
 
         {/* Tab Switcher */}
-        <div className="grid grid-cols-2 p-1 bg-slate-900/90 border border-slate-800 rounded-2xl">
+        <div className="grid grid-cols-2 p-1 bg-[#F7F7F5] border border-[#E5E5E2] rounded-2xl">
           <button
             type="button"
             onClick={() => { setTab('LOGIN'); setErrorMsg(null); setSuccessMsg(null); }}
             className={`py-2 text-xs font-bold rounded-xl transition-all ${
               tab === 'LOGIN'
-                ? 'bg-gradient-to-r from-emerald-500/20 to-cyan-500/20 text-emerald-400 border border-emerald-500/30 shadow-sm'
-                : 'text-slate-400 hover:text-white'
+                ? 'bg-[#0F0F0F] text-white shadow-sm'
+                : 'text-[#737373] hover:text-[#0F0F0F]'
             }`}
           >
             Masuk
@@ -136,8 +133,8 @@ export const AuthModal: React.FC = () => {
             onClick={() => { setTab('REGISTER'); setErrorMsg(null); setSuccessMsg(null); }}
             className={`py-2 text-xs font-bold rounded-xl transition-all ${
               tab === 'REGISTER'
-                ? 'bg-gradient-to-r from-emerald-500/20 to-cyan-500/20 text-emerald-400 border border-emerald-500/30 shadow-sm'
-                : 'text-slate-400 hover:text-white'
+                ? 'bg-[#0F0F0F] text-white shadow-sm'
+                : 'text-[#737373] hover:text-[#0F0F0F]'
             }`}
           >
             Daftar Akun
@@ -146,14 +143,14 @@ export const AuthModal: React.FC = () => {
 
         {/* Alerts */}
         {errorMsg && (
-          <div className="p-3 rounded-2xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs flex items-center space-x-2">
-            <AlertCircle className="w-4 h-4 shrink-0" />
+          <div className="p-3 rounded-2xl bg-rose-50 border border-rose-200 text-rose-800 text-xs flex items-center space-x-2 font-medium">
+            <AlertCircle className="w-4 h-4 shrink-0 text-rose-600" />
             <span>{errorMsg}</span>
           </div>
         )}
         {successMsg && (
-          <div className="p-3 rounded-2xl bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-xs flex items-center space-x-2">
-            <CheckCircle2 className="w-4 h-4 shrink-0" />
+          <div className="p-3 rounded-2xl bg-emerald-50 border border-emerald-200 text-emerald-800 text-xs flex items-center space-x-2 font-medium">
+            <CheckCircle2 className="w-4 h-4 shrink-0 text-emerald-600" />
             <span>{successMsg}</span>
           </div>
         )}
@@ -162,15 +159,15 @@ export const AuthModal: React.FC = () => {
         <form onSubmit={handleSubmit} className="space-y-3">
           {tab === 'REGISTER' && (
             <div className="space-y-1">
-              <label className="text-slate-300 text-xs font-semibold block">Nama Lengkap Trader</label>
+              <label className="text-[#0F0F0F] text-xs font-bold block">Nama Lengkap Trader</label>
               <div className="relative">
-                <User className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <User className="w-4 h-4 text-[#A3A3A3] absolute left-3.5 top-1/2 -translate-y-1/2" />
                 <input
                   type="text"
                   placeholder="Misal: Alex Wijaya"
                   value={displayName}
                   onChange={(e) => setDisplayName(e.target.value)}
-                  className="w-full bg-slate-900 border border-slate-800 rounded-2xl pl-10 pr-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
+                  className="w-full bg-[#F7F7F5] border border-[#E5E5E2] rounded-2xl pl-10 pr-3.5 py-2.5 text-xs text-[#0F0F0F] font-semibold placeholder-[#A3A3A3] focus:outline-none focus:border-[#0F0F0F] transition-colors"
                   required
                 />
               </div>
@@ -178,30 +175,30 @@ export const AuthModal: React.FC = () => {
           )}
 
           <div className="space-y-1">
-            <label className="text-slate-300 text-xs font-semibold block">Alamat Email</label>
+            <label className="text-[#0F0F0F] text-xs font-bold block">Alamat Email</label>
             <div className="relative">
-              <Mail className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <Mail className="w-4 h-4 text-[#A3A3A3] absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
                 type="email"
                 placeholder="nama@email.com"
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                className="w-full bg-slate-900 border border-slate-800 rounded-2xl pl-10 pr-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
+                className="w-full bg-[#F7F7F5] border border-[#E5E5E2] rounded-2xl pl-10 pr-3.5 py-2.5 text-xs text-[#0F0F0F] font-semibold placeholder-[#A3A3A3] focus:outline-none focus:border-[#0F0F0F] transition-colors"
                 required
               />
             </div>
           </div>
 
           <div className="space-y-1">
-            <label className="text-slate-300 text-xs font-semibold block">Password</label>
+            <label className="text-[#0F0F0F] text-xs font-bold block">Password</label>
             <div className="relative">
-              <Lock className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+              <Lock className="w-4 h-4 text-[#A3A3A3] absolute left-3.5 top-1/2 -translate-y-1/2" />
               <input
                 type="password"
                 placeholder="••••••••"
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
-                className="w-full bg-slate-900 border border-slate-800 rounded-2xl pl-10 pr-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
+                className="w-full bg-[#F7F7F5] border border-[#E5E5E2] rounded-2xl pl-10 pr-3.5 py-2.5 text-xs text-[#0F0F0F] font-semibold placeholder-[#A3A3A3] focus:outline-none focus:border-[#0F0F0F] transition-colors"
                 required
               />
             </div>
@@ -209,15 +206,15 @@ export const AuthModal: React.FC = () => {
 
           {tab === 'REGISTER' && (
             <div className="space-y-1">
-              <label className="text-slate-300 text-xs font-semibold block">Ulangi Password</label>
+              <label className="text-[#0F0F0F] text-xs font-bold block">Ulangi Password</label>
               <div className="relative">
-                <Lock className="w-4 h-4 text-slate-500 absolute left-3.5 top-1/2 -translate-y-1/2" />
+                <Lock className="w-4 h-4 text-[#A3A3A3] absolute left-3.5 top-1/2 -translate-y-1/2" />
                 <input
                   type="password"
                   placeholder="••••••••"
                   value={confirmPassword}
                   onChange={(e) => setConfirmPassword(e.target.value)}
-                  className="w-full bg-slate-900 border border-slate-800 rounded-2xl pl-10 pr-3.5 py-2.5 text-xs text-white placeholder-slate-500 focus:outline-none focus:border-emerald-500 transition-colors"
+                  className="w-full bg-[#F7F7F5] border border-[#E5E5E2] rounded-2xl pl-10 pr-3.5 py-2.5 text-xs text-[#0F0F0F] font-semibold placeholder-[#A3A3A3] focus:outline-none focus:border-[#0F0F0F] transition-colors"
                   required
                 />
               </div>
@@ -227,7 +224,7 @@ export const AuthModal: React.FC = () => {
           <button
             type="submit"
             disabled={loading}
-            className="w-full mt-2 py-3 rounded-2xl bg-gradient-to-r from-emerald-500 to-cyan-500 hover:from-emerald-400 hover:to-cyan-400 text-[#070a12] font-extrabold text-xs transition-all shadow-glow-emerald flex items-center justify-center space-x-2 disabled:opacity-50 cursor-pointer"
+            className="w-full mt-2 py-3 rounded-2xl bg-[#0F0F0F] hover:bg-black text-white font-extrabold text-xs transition-all shadow-md flex items-center justify-center space-x-2 disabled:opacity-50 cursor-pointer"
           >
             {loading ? (
               <>
@@ -244,11 +241,11 @@ export const AuthModal: React.FC = () => {
         </form>
 
         {/* Guest / Offline Mode Note */}
-        <div className="pt-2 text-center border-t border-slate-800/80">
+        <div className="pt-2 text-center border-t border-[#E5E5E2]">
           <button
             type="button"
             onClick={() => setIsAuthModalOpen(false)}
-            className="text-[11px] text-slate-400 hover:text-slate-300 underline font-medium"
+            className="text-[11px] text-[#737373] hover:text-[#0F0F0F] font-semibold"
           >
             Lanjut sebagai Tamu (Mode Offline)
           </button>

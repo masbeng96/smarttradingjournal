@@ -2,8 +2,7 @@ import React from 'react';
 import { useJournal } from '../../context/JournalContext';
 import { 
   Bell, 
-  User, 
-  Sparkles, 
+  Settings, 
   ArrowUpCircle
 } from 'lucide-react';
 
@@ -12,18 +11,16 @@ export const TopHeader: React.FC = () => {
     unreadNotificationCount, 
     setIsNotificationDrawerOpen, 
     setIsSettingsModalOpen,
-    runDailyAnalysisManual,
-    settings,
-    updateSettings,
     updateAvailable,
     setIsUpdateModalOpen,
     userProfile
   } = useJournal();
 
-  const toggleCurrency = () => {
-    updateSettings({
-      currency: settings.currency === 'USD' ? 'IDR' : 'USD'
-    });
+  const getGreeting = () => {
+    const hour = new Date().getHours();
+    if (hour < 12) return 'Good morning,';
+    if (hour < 18) return 'Good afternoon,';
+    return 'Good evening,';
   };
 
   const getInitials = (name: string) => {
@@ -36,86 +33,78 @@ export const TopHeader: React.FC = () => {
   };
 
   return (
-    <header className="sticky top-0 z-40 shrink-0 w-full px-4 pt-[max(0.75rem,env(safe-area-inset-top))] pb-3 bg-[#070a12]/95 backdrop-blur-xl border-b border-slate-800/60 flex items-center justify-between shadow-sm">
-      {/* Brand & App Title */}
-      <div className="flex items-center space-x-2.5">
-        <div className="w-9 h-9 rounded-2xl bg-gradient-to-tr from-emerald-500 to-cyan-500 p-0.5 shadow-glow-emerald flex items-center justify-center shrink-0">
-          <div className="w-full h-full bg-[#0b0f19] rounded-[14px] flex items-center justify-center overflow-hidden">
-            <img src="/logo-trading.jpg" alt="Trade Journal Logo" className="w-full h-full object-cover" />
-          </div>
+    <header className="sticky top-0 z-40 shrink-0 w-full px-5 pt-[max(0.85rem,env(safe-area-inset-top))] pb-3 bg-[#F7F7F5]/95 backdrop-blur-xl border-b border-[#E5E5E2] flex items-center justify-between shadow-sm">
+      {/* Left: Greeting & User Name */}
+      <div className="flex items-center space-x-3">
+        <div 
+          onClick={() => setIsSettingsModalOpen(true)}
+          className="w-10 h-10 rounded-2xl bg-[#0F0F0F] text-white p-0.5 shadow-sm flex items-center justify-center cursor-pointer active:scale-95 transition-transform overflow-hidden"
+          title="Pengaturan Profil Trader"
+        >
+          {userProfile?.photoURL ? (
+            <img 
+              src={userProfile.photoURL} 
+              alt={userProfile.displayName || 'Profile'} 
+              className="w-full h-full object-cover rounded-[14px]" 
+            />
+          ) : userProfile ? (
+            <span className="text-xs font-bold font-mono-num">
+              {getInitials(userProfile.displayName || userProfile.email)}
+            </span>
+          ) : (
+            <div className="w-full h-full rounded-[14px] overflow-hidden flex items-center justify-center bg-[#1A1A1A]">
+              <img src="/logo-trading.jpg" alt="Profile" className="w-full h-full object-cover" />
+            </div>
+          )}
         </div>
         <div>
-          <div className="flex items-center space-x-1.5">
-            <h1 className="text-sm font-extrabold tracking-tight text-white">TRADE JOURNAL</h1>
-            <span className="text-[9px] uppercase font-extrabold tracking-widest px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+          <span className="text-[11px] text-[#737373] font-medium block leading-tight">
+            {getGreeting()}
+          </span>
+          <h1 className="text-base font-extrabold tracking-tight text-[#0F0F0F] leading-tight flex items-center space-x-1.5">
+            <span>{userProfile?.displayName || 'Darpan Trader'}</span>
+            <span className="text-[8px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded-full bg-[#0F0F0F] text-white">
               PRO
             </span>
-          </div>
+          </h1>
         </div>
       </div>
 
-      {/* Action Buttons */}
+      {/* Right: Action Buttons */}
       <div className="flex items-center space-x-2">
-        {/* Currency Switcher */}
-        <button
-          onClick={toggleCurrency}
-          title="Ganti Mata Uang (USD / IDR)"
-          className="px-2.5 py-1 rounded-xl bg-slate-900 border border-slate-800 text-[11px] font-mono font-semibold text-slate-300 hover:text-emerald-400 hover:border-emerald-500/30 transition-colors"
-        >
-          {settings.currency}
-        </button>
-
         {/* Update available trigger button */}
         {updateAvailable && (
           <button
             onClick={() => setIsUpdateModalOpen(true)}
-            className="flex items-center space-x-1 px-2.5 py-1 rounded-xl bg-emerald-500/20 text-emerald-400 border border-emerald-500/40 text-[11px] font-semibold animate-pulse"
-            title="Update Aplikasi Baru Tersedia"
+            className="flex items-center space-x-1 px-2.5 py-1 rounded-xl bg-emerald-50 text-emerald-600 border border-emerald-200 text-[11px] font-semibold animate-pulse"
+            title="Update Tersedia"
           >
             <ArrowUpCircle className="w-3.5 h-3.5" />
             <span className="hidden sm:inline">Update</span>
           </button>
         )}
 
-        {/* 5:00 AM Quick Analysis Trigger */}
-        <button
-          onClick={runDailyAnalysisManual}
-          title="Jalankan Analisa 05:00 AM Sekarang"
-          className="p-2 rounded-xl bg-gradient-to-r from-amber-500/20 to-orange-500/20 border border-amber-500/30 text-amber-400 hover:bg-amber-500/30 transition-all flex items-center justify-center relative group"
-        >
-          <Sparkles className="w-4 h-4" />
-          <span className="absolute -bottom-7 right-0 hidden group-hover:block bg-slate-900 border border-slate-800 text-[10px] text-amber-300 px-2 py-0.5 rounded whitespace-nowrap z-50">
-            Analisa 5 AM
-          </span>
-        </button>
-
         {/* Notifications Bell */}
         <button
           onClick={() => setIsNotificationDrawerOpen(true)}
-          className="p-2 rounded-xl bg-slate-900/90 border border-slate-800 text-slate-300 hover:text-white hover:border-slate-700 transition-colors relative"
+          className="w-8 h-8 rounded-xl bg-white border border-[#E5E5E2] text-[#525252] hover:text-[#0F0F0F] hover:bg-[#F2F2EF] transition-colors relative flex items-center justify-center shadow-sm"
           title="Pemberitahuan"
         >
           <Bell className="w-4 h-4" />
           {unreadNotificationCount > 0 && (
-            <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-rose-500 text-[10px] font-bold text-white flex items-center justify-center animate-pulse">
+            <span className="absolute -top-1 -right-1 w-4 h-4 rounded-full bg-rose-500 text-[9px] font-bold text-white flex items-center justify-center animate-pulse">
               {unreadNotificationCount}
             </span>
           )}
         </button>
 
-        {/* Profile / Account Trigger */}
+        {/* Dedicated Settings Button */}
         <button
           onClick={() => setIsSettingsModalOpen(true)}
-          className="p-1.5 rounded-xl bg-slate-900/90 border border-slate-800 text-slate-300 hover:text-white hover:border-emerald-500/40 transition-all flex items-center justify-center relative"
-          title="Pengaturan Profil Trader"
+          className="w-8 h-8 rounded-xl bg-white border border-[#E5E5E2] text-[#525252] hover:text-[#0F0F0F] hover:bg-[#F2F2EF] transition-colors flex items-center justify-center shadow-sm"
+          title="Pengaturan Akun & Profil"
         >
-          {userProfile ? (
-            <div className="w-5 h-5 rounded-lg bg-gradient-to-tr from-emerald-500 to-cyan-500 flex items-center justify-center text-[10px] font-extrabold text-[#070a12]">
-              {getInitials(userProfile.displayName || userProfile.email)}
-            </div>
-          ) : (
-            <User className="w-4 h-4" />
-          )}
+          <Settings className="w-4 h-4" />
         </button>
       </div>
     </header>

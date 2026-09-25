@@ -3,18 +3,15 @@ import {
   CalendarDays, 
   RotateCcw, 
   Search, 
-  Filter, 
-  AlertTriangle, 
-  ShieldAlert, 
-  Clock, 
-  ExternalLink, 
-  TrendingUp, 
-  TrendingDown, 
   Flame, 
-  CheckCircle2,
-  Calendar as CalendarIcon,
-  ChevronRight,
-  Info
+  CheckCircle2, 
+  Calendar as CalendarIcon, 
+  AlertTriangle,
+  Bell,
+  BellRing,
+  ChevronDown,
+  Clock,
+  Check
 } from 'lucide-react';
 import { 
   fetchEconomicCalendar, 
@@ -22,9 +19,17 @@ import {
   getEventCountdownText 
 } from '../../lib/economicCalendarService';
 import { EconomicEvent, NewsImpact } from '../../types/journal';
+import { CustomSelect } from '../ui/CustomSelect';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const CURRENCIES = ['ALL', 'USD', 'EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'CHF', 'NZD', 'CNY'];
+
+const IMPACT_FILTER_OPTIONS = [
+  { value: 'ALL', label: 'Semua Impact' },
+  { value: 'HIGH', label: '🔴 High Impact' },
+  { value: 'HIGH_MED', label: '🔴🟠 High & Medium' },
+  { value: 'LOW', label: '🟡 Low Impact' },
+];
 
 export const EconomicCalendarView: React.FC = () => {
   const [period, setPeriod] = useState<'thisweek' | 'nextweek'>('thisweek');
@@ -35,9 +40,46 @@ export const EconomicCalendarView: React.FC = () => {
 
   // Filters
   const [selectedCurrency, setSelectedCurrency] = useState<string>('ALL');
-  const [selectedImpact, setSelectedImpact] = useState<string>('ALL'); // 'ALL' | 'HIGH' | 'HIGH_MED' | 'LOW'
-  const [selectedDateFilter, setSelectedDateFilter] = useState<'ALL' | 'TODAY' | 'TOMORROW'>('ALL');
+  const [selectedImpact, setSelectedImpact] = useState<string>('ALL');
+  const [selectedDateFilter, setSelectedDateFilter] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
+
+  // Dynamic Date Filter Options derived from current events
+  const dateFilterOptions = useMemo(() => {
+    const baseOptions = [
+      { value: 'ALL', label: 'Semua Hari' },
+      { value: 'TODAY', label: 'Hari Ini' },
+      { value: 'TOMORROW', label: 'Besok' },
+    ];
+
+    const uniqueDays = new Map<string, string>();
+    events.forEach((e) => {
+      if (e.dateKey && e.dateFormatted) {
+        uniqueDays.set(e.dateKey, e.dateFormatted);
+      }
+    });
+
+    const specificDayOptions = Array.from(uniqueDays.entries()).map(([dateKey, dateFormatted]) => ({
+      value: dateKey,
+      label: dateFormatted,
+    }));
+
+    return [...baseOptions, ...specificDayOptions];
+  }, [events]);
+
+  // Alarm Schedule state for Android notifications
+  const [scheduledAlarms, setScheduledAlarms] = useState<Record<string, boolean>>(() => {
+    try {
+      const saved = localStorage.getItem('trading_news_alarms_v1');
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
+  const [alarmToast, setAlarmToast] = useState<string | null>(null);
+
+  // Collapsible state for completed news
+  const [isCompletedSectionOpen, setIsCompletedSectionOpen] = useState<boolean>(false);
 
   const loadCalendar = async (force = false) => {
     setIsLoading(true);
@@ -56,6 +98,23 @@ export const EconomicCalendarView: React.FC = () => {
   useEffect(() => {
     loadCalendar(false);
   }, [period]);
+
+  const toggleAlarm = (event: EconomicEvent) => {
+    const nextState = !scheduledAlarms[event.id];
+    const updated = { ...scheduledAlarms, [event.id]: nextState };
+    setScheduledAlarms(updated);
+    localStorage.setItem('trading_news_alarms_v1', JSON.stringify(updated));
+
+    if (nextState) {
+      setAlarmToast(`🔔 Alarm disetel untuk ${event.title} (${event.timeWib} WIB). Notifikasi Android akan aktif 15 menit sebelum rilis.`);
+    } else {
+      setAlarmToast(`🔕 Alarm dibatalkan untuk ${event.title}.`);
+    }
+
+    setTimeout(() => {
+      setAlarmToast(null);
+    }, 4000);
+  };
 
   // Today's High-Impact events for alert banner
   const todayHighImpactEvents = useMemo(() => {
@@ -83,6 +142,14 @@ export const EconomicCalendarView: React.FC = () => {
       // Date filter
       if (selectedDateFilter === 'TODAY' && !e.isToday) return false;
       if (selectedDateFilter === 'TOMORROW' && e.dateKey !== tomorrowKey) return false;
+      if (
+        selectedDateFilter !== 'ALL' &&
+        selectedDateFilter !== 'TODAY' &&
+        selectedDateFilter !== 'TOMORROW' &&
+        e.dateKey !== selectedDateFilter
+      ) {
+        return false;
+      }
 
       // Search query
       if (searchQuery.trim()) {
@@ -96,11 +163,29 @@ export const EconomicCalendarView: React.FC = () => {
     });
   }, [events, selectedCurrency, selectedImpact, selectedDateFilter, searchQuery]);
 
-  // Group events by dateKey
-  const groupedEvents = useMemo(() => {
-    const map: Record<string, { label: string; dateKey: string; isToday: boolean; items: EconomicEvent[] }> = {};
+  // Separate upcoming vs completed events
+  const { upcomingEvents, completedEvents } = useMemo(() => {
+    const now = Date.now();
+    const upcoming: EconomicEvent[] = [];
+    const completed: EconomicEvent[] = [];
 
     filteredEvents.forEach((ev) => {
+      const isFinished = Boolean(ev.actual && ev.actual.trim() !== '') || (ev.timestamp && ev.timestamp < now - 30 * 60 * 1000);
+      if (isFinished) {
+        completed.push(ev);
+      } else {
+        upcoming.push(ev);
+      }
+    });
+
+    return { upcomingEvents: upcoming, completedEvents: completed };
+  }, [filteredEvents]);
+
+  // Group upcoming events by dateKey
+  const groupedUpcomingEvents = useMemo(() => {
+    const map: Record<string, { label: string; dateKey: string; isToday: boolean; items: EconomicEvent[] }> = {};
+
+    upcomingEvents.forEach((ev) => {
       if (!map[ev.dateKey]) {
         map[ev.dateKey] = {
           label: ev.dateFormatted,
@@ -113,102 +198,214 @@ export const EconomicCalendarView: React.FC = () => {
     });
 
     return Object.values(map);
-  }, [filteredEvents]);
+  }, [upcomingEvents]);
 
   const getImpactBadge = (impact: NewsImpact) => {
     switch (impact) {
       case 'High':
         return (
-          <span className="flex items-center space-x-1 px-2 py-0.5 rounded-md text-[10px] font-bold bg-rose-500/20 text-rose-400 border border-rose-500/30">
-            <span className="w-1.5 h-1.5 rounded-full bg-rose-500 animate-pulse" />
+          <span className="flex items-center space-x-1 px-2 py-0.5 rounded-md text-[10px] font-extrabold bg-rose-100 text-rose-700 border border-rose-200">
+            <span className="w-1.5 h-1.5 rounded-full bg-rose-600 animate-pulse" />
             <span>HIGH</span>
           </span>
         );
       case 'Medium':
         return (
-          <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
+          <span className="px-2 py-0.5 rounded-md text-[10px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
             MED
           </span>
         );
       case 'Low':
         return (
-          <span className="px-2 py-0.5 rounded-md text-[10px] font-medium bg-yellow-500/10 text-yellow-300/80 border border-yellow-500/20">
+          <span className="px-2 py-0.5 rounded-md text-[10px] font-medium bg-neutral-100 text-neutral-600 border border-neutral-200">
             LOW
           </span>
         );
       default:
         return (
-          <span className="px-2 py-0.5 rounded-md text-[10px] font-medium bg-slate-800 text-slate-400 border border-slate-700">
+          <span className="px-2 py-0.5 rounded-md text-[10px] font-medium bg-neutral-100 text-neutral-500 border border-neutral-200">
             HOLIDAY
           </span>
         );
     }
   };
 
+  const renderEventCard = (event: EconomicEvent, isFinished = false) => {
+    const flag = COUNTRY_FLAGS[event.country] || '🌐';
+    const countdown = getEventCountdownText(event.timestamp);
+    const hasAlarm = Boolean(scheduledAlarms[event.id]);
+
+    return (
+      <div
+        key={event.id}
+        className={`card-light p-3.5 transition-all ${
+          isFinished 
+            ? 'opacity-80 bg-[#FAFAF8] border-[#E5E5E2]' 
+            : event.isHighImpact
+            ? 'border-rose-200 hover:border-rose-300'
+            : event.impact === 'Medium'
+            ? 'border-amber-200 hover:border-amber-300'
+            : 'hover:border-[#D4D4D0]'
+        }`}
+      >
+        {/* Top Row: Currency, Time, Impact Badge & Alarm Button */}
+        <div className="flex items-center justify-between mb-2">
+          <div className="flex items-center space-x-2">
+            <span className="text-base">{flag}</span>
+            <span className="font-mono-num font-extrabold text-xs text-[#0F0F0F]">
+              {event.country}
+            </span>
+            <span className="text-[#A3A3A3]">•</span>
+            <span className="text-xs font-mono-num font-bold text-[#0F0F0F]">
+              {event.timeWib}
+            </span>
+          </div>
+
+          <div className="flex items-center space-x-2">
+            {getImpactBadge(event.impact)}
+
+            {/* Set Alarm / Reminder Button for Android */}
+            {!isFinished && (
+              <button
+                type="button"
+                onClick={() => toggleAlarm(event)}
+                className={`p-1.5 rounded-xl border text-xs flex items-center space-x-1 font-bold transition-all ${
+                  hasAlarm
+                    ? 'bg-[#0F0F0F] text-white border-[#0F0F0F] shadow-sm'
+                    : 'bg-white text-[#737373] border-[#E5E5E2] hover:text-[#0F0F0F] hover:border-[#D4D4D0]'
+                }`}
+                title={hasAlarm ? 'Alarm Aktif (Klik untuk matikan)' : 'Set Alarm Notifikasi Android'}
+              >
+                {hasAlarm ? (
+                  <>
+                    <BellRing className="w-3.5 h-3.5 text-emerald-400" />
+                    <span className="text-[10px] hidden sm:inline">Alarm On</span>
+                  </>
+                ) : (
+                  <>
+                    <Bell className="w-3.5 h-3.5" />
+                    <span className="text-[10px] hidden sm:inline">Alarm</span>
+                  </>
+                )}
+              </button>
+            )}
+          </div>
+        </div>
+
+        {/* Event Title */}
+        <div className="text-xs font-bold text-[#0F0F0F] mb-2 leading-snug">
+          {event.title}
+        </div>
+
+        {/* Bottom Metric Row: Actual, Forecast, Previous & Status */}
+        <div className="pt-2 border-t border-[#E5E5E2] grid grid-cols-4 gap-2 text-[11px] items-center">
+          <div>
+            <span className="text-[10px] text-[#737373] block">Actual:</span>
+            <span className={`font-mono-num font-extrabold ${
+              event.actual ? 'text-emerald-600' : 'text-[#A3A3A3]'
+            }`}>
+              {event.actual || '-'}
+            </span>
+          </div>
+
+          <div>
+            <span className="text-[10px] text-[#737373] block">Forecast:</span>
+            <span className="font-mono-num font-semibold text-[#525252]">
+              {event.forecast || '-'}
+            </span>
+          </div>
+
+          <div>
+            <span className="text-[10px] text-[#737373] block">Previous:</span>
+            <span className="font-mono-num font-semibold text-[#737373]">
+              {event.previous || '-'}
+            </span>
+          </div>
+
+          <div className="text-right flex justify-end">
+            <span className="text-[10px] font-mono-num text-[#737373] px-2 py-0.5 rounded-lg bg-[#F7F7F5] border border-[#E5E5E2] font-medium">
+              {isFinished ? 'Selesai' : countdown}
+            </span>
+          </div>
+        </div>
+      </div>
+    );
+  };
+
   return (
-    <div className="p-4 space-y-4 pb-24">
-      {/* 1. Header Card */}
-      <div className="relative overflow-hidden rounded-3xl p-5 bg-gradient-to-br from-slate-900 via-[#0a1220] to-[#081523] border border-cyan-500/20 shadow-glow-emerald">
-        {/* Ambient Glows */}
-        <div className="absolute -top-12 -right-12 w-36 h-36 bg-cyan-500/15 rounded-full blur-2xl pointer-events-none" />
-        <div className="absolute -bottom-12 -left-12 w-36 h-36 bg-amber-500/10 rounded-full blur-2xl pointer-events-none" />
+    <div className="p-4 space-y-4 pb-24 max-w-lg mx-auto">
+      {/* Alarm Feedback Toast Notification */}
+      <AnimatePresence>
+        {alarmToast && (
+          <motion.div
+            initial={{ opacity: 0, y: -15 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -15 }}
+            className="fixed top-16 left-4 right-4 max-w-md mx-auto z-50 p-3 rounded-2xl bg-[#0F0F0F] text-white text-xs font-semibold shadow-2xl border border-neutral-700 flex items-center space-x-2"
+          >
+            <Check className="w-4 h-4 text-emerald-400 shrink-0" />
+            <span className="flex-1">{alarmToast}</span>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
-        <div className="relative z-10 space-y-3">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2.5">
-              <div className="w-9 h-9 rounded-2xl bg-cyan-500/20 border border-cyan-500/30 flex items-center justify-center text-cyan-400">
-                <CalendarDays className="w-5 h-5" />
-              </div>
-              <div>
-                <h2 className="text-base font-extrabold text-white flex items-center space-x-1.5">
-                  <span>Kalender Berita Ekonomi</span>
-                </h2>
-                <p className="text-[11px] text-slate-400">
-                  Forex Factory Live News Feed & Scraper
-                </p>
-              </div>
+      {/* 1. Header Card (10% ACCENT - Pitch Black Card) */}
+      <div className="card-dark-hero p-5 space-y-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center space-x-2.5">
+            <div className="w-9 h-9 rounded-2xl bg-neutral-900 border border-neutral-800 flex items-center justify-center text-white">
+              <CalendarDays className="w-5 h-5" />
             </div>
+            <div>
+              <h2 className="text-base font-extrabold text-white flex items-center space-x-1.5">
+                <span>Kalender Berita Ekonomi</span>
+              </h2>
+              <p className="text-[11px] text-[#A3A3A3]">
+                Forex Factory Live News & High Impact Feed
+              </p>
+            </div>
+          </div>
 
+          {/* Primary Refresh Button */}
+          <button
+            onClick={() => loadCalendar(true)}
+            disabled={isLoading}
+            title="Refresh Kalender Live"
+            className="px-3 py-1.5 rounded-xl bg-white text-[#0F0F0F] hover:bg-[#F2F2EF] font-bold text-xs shadow-sm transition-all disabled:opacity-50 flex items-center space-x-1.5"
+          >
+            <RotateCcw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin' : ''}`} />
+            <span>Refresh</span>
+          </button>
+        </div>
+
+        {/* Period Toggle & Sync Info */}
+        <div className="flex items-center justify-between pt-1">
+          <div className="flex bg-neutral-900 p-1 rounded-xl border border-neutral-800 text-xs">
             <button
-              onClick={() => loadCalendar(true)}
-              disabled={isLoading}
-              title="Refresh Kalender"
-              className="p-2 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-white transition-all disabled:opacity-50 flex items-center space-x-1 text-xs font-semibold"
+              onClick={() => setPeriod('thisweek')}
+              className={`px-3 py-1 rounded-lg font-bold transition-all ${
+                period === 'thisweek'
+                  ? 'bg-white text-[#0F0F0F] shadow-sm'
+                  : 'text-[#A3A3A3] hover:text-white'
+              }`}
             >
-              <RotateCcw className={`w-3.5 h-3.5 ${isLoading ? 'animate-spin text-cyan-400' : ''}`} />
-              <span className="hidden sm:inline">Refresh</span>
+              Minggu Ini
+            </button>
+            <button
+              onClick={() => setPeriod('nextweek')}
+              className={`px-3 py-1 rounded-lg font-bold transition-all ${
+                period === 'nextweek'
+                  ? 'bg-white text-[#0F0F0F] shadow-sm'
+                  : 'text-[#A3A3A3] hover:text-white'
+              }`}
+            >
+              Minggu Depan
             </button>
           </div>
 
-          {/* Period Toggle & Sync Info */}
-          <div className="flex items-center justify-between pt-1">
-            <div className="flex bg-slate-950/80 p-1 rounded-xl border border-slate-800 text-xs">
-              <button
-                onClick={() => setPeriod('thisweek')}
-                className={`px-3 py-1 rounded-lg font-bold transition-all ${
-                  period === 'thisweek'
-                    ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 shadow-sm'
-                    : 'text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                Minggu Ini
-              </button>
-              <button
-                onClick={() => setPeriod('nextweek')}
-                className={`px-3 py-1 rounded-lg font-bold transition-all ${
-                  period === 'nextweek'
-                    ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/30 shadow-sm'
-                    : 'text-slate-400 hover:text-slate-200'
-                }`}
-              >
-                Minggu Depan
-              </button>
-            </div>
-
-            <span className="text-[10px] text-slate-500 font-mono-num">
-              {lastFetchedTime ? `Sinkron: ${lastFetchedTime}` : 'Memuat...'}
-            </span>
-          </div>
+          <span className="text-[10px] text-[#A3A3A3] font-mono-num">
+            {lastFetchedTime ? `Sinkron: ${lastFetchedTime}` : 'Memuat...'}
+          </span>
         </div>
       </div>
 
@@ -217,15 +414,15 @@ export const EconomicCalendarView: React.FC = () => {
         <motion.div
           initial={{ opacity: 0, y: -6 }}
           animate={{ opacity: 1, y: 0 }}
-          className="rounded-2xl p-4 bg-gradient-to-r from-rose-950/50 via-slate-900 to-amber-950/30 border border-rose-500/40 space-y-2.5 shadow-lg"
+          className="card-light p-4 border-rose-300 bg-rose-50/50 space-y-2.5"
         >
           <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2 text-rose-400 font-extrabold text-xs">
-              <Flame className="w-4 h-4 animate-bounce text-rose-500" />
-              <span>PERINGATAN RISIKO HIGH IMPACT HARI INI ({todayHighImpactEvents.length})</span>
+            <div className="flex items-center space-x-2 text-rose-800 font-extrabold text-xs">
+              <Flame className="w-4 h-4 text-rose-600" />
+              <span>PERINGATAN HIGH IMPACT HARI INI ({todayHighImpactEvents.length})</span>
             </div>
-            <span className="text-[10px] px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300 font-semibold border border-rose-500/30">
-              Waspada Volatilitas
+            <span className="text-[10px] px-2 py-0.5 rounded-full bg-rose-200 text-rose-800 font-bold border border-rose-300">
+              Waspada
             </span>
           </div>
 
@@ -233,236 +430,196 @@ export const EconomicCalendarView: React.FC = () => {
             {todayHighImpactEvents.map((item) => (
               <div
                 key={item.id}
-                className="flex items-center justify-between p-2 rounded-xl bg-slate-950/60 border border-rose-500/20 text-xs"
+                className="flex items-center justify-between p-2 rounded-xl bg-white border border-rose-200 text-xs"
               >
                 <div className="flex items-center space-x-2">
                   <span className="text-base">{COUNTRY_FLAGS[item.country] || '🌐'}</span>
-                  <span className="font-mono-num font-bold text-slate-200">{item.country}</span>
-                  <span className="text-slate-300 font-medium truncate max-w-[150px] sm:max-w-xs">{item.title}</span>
+                  <span className="font-mono-num font-extrabold text-[#0F0F0F]">{item.country}</span>
+                  <span className="text-[#525252] font-semibold truncate max-w-[150px] sm:max-w-xs">{item.title}</span>
                 </div>
                 <div className="flex items-center space-x-2 font-mono-num">
-                  <span className="text-rose-400 font-bold">{item.timeWib}</span>
-                  <span className="text-[10px] text-slate-400">({getEventCountdownText(item.timestamp)})</span>
+                  <span className="text-rose-600 font-extrabold">{item.timeWib}</span>
+                  <span className="text-[10px] text-[#737373]">({getEventCountdownText(item.timestamp)})</span>
                 </div>
               </div>
             ))}
           </div>
 
-          <p className="text-[11px] text-rose-300/80 leading-relaxed">
-            💡 <strong>Rekomendasi Manajemen Resiko:</strong> Hindari membuka posisi baru 15 menit sebelum & sesudah rilis berita di atas atau gunakan ukuran lot lebih kecil.
+          <p className="text-[11px] text-rose-900 leading-relaxed font-medium">
+            💡 <strong>Rekomendasi Manajemen Resiko:</strong> Hindari membuka posisi baru 15 menit sebelum & sesudah rilis berita di atas.
           </p>
         </motion.div>
       ) : !isLoading && (
-        <div className="rounded-2xl p-3 bg-emerald-950/20 border border-emerald-500/30 flex items-center space-x-2.5 text-xs text-emerald-300">
-          <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
-          <span>Tidak ada berita High-Impact untuk hari ini. Kondisi pasar relatif stabil untuk eksekusi teknikal.</span>
+        <div className="card-light p-3 bg-emerald-50/60 border-emerald-200 flex items-center space-x-2.5 text-xs text-emerald-800">
+          <CheckCircle2 className="w-4 h-4 text-emerald-600 shrink-0" />
+          <span>Tidak ada berita High-Impact untuk hari ini. Kondisi pasar relatif stabil.</span>
         </div>
       )}
 
-      {/* 3. Search & Filter Bar */}
+      {/* 3. Search & Dropdown Filter Bar */}
       <div className="space-y-2.5">
         {/* Search Input */}
         <div className="relative">
-          <Search className="w-4 h-4 text-slate-400 absolute left-3 top-2.5" />
+          <Search className="w-4 h-4 text-[#A3A3A3] absolute left-3.5 top-3" />
           <input
             type="text"
-            placeholder="Cari rilis berita (e.g. CPI, FOMC, NFP, Rate, Powell)..."
+            placeholder="Cari rilis berita (e.g. CPI, FOMC, NFP, Rate)..."
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            className="w-full bg-slate-900/90 border border-slate-800 rounded-xl pl-9 pr-3 py-2 text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-cyan-500 transition-colors"
+            className="w-full bg-white border border-[#E5E5E2] rounded-2xl pl-10 pr-4 py-2.5 text-xs text-[#0F0F0F] placeholder:text-[#A3A3A3] focus:outline-none focus:border-[#0F0F0F] transition-colors font-medium shadow-sm"
           />
         </div>
 
-        {/* Date & Impact Filter Rows */}
-        <div className="flex items-center space-x-1.5 overflow-x-auto pb-1 text-xs">
-          {/* Date Filter */}
-          {[
-            { id: 'ALL', label: 'Semua Hari' },
-            { id: 'TODAY', label: 'Hari Ini' },
-            { id: 'TOMORROW', label: 'Besok' },
-          ].map((d) => (
-            <button
-              key={d.id}
-              onClick={() => setSelectedDateFilter(d.id as any)}
-              className={`px-3 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
-                selectedDateFilter === d.id
-                  ? 'bg-slate-700 text-white border border-slate-600'
-                  : 'bg-slate-900/70 text-slate-400 border border-slate-800/80 hover:text-slate-200'
-              }`}
-            >
-              {d.label}
-            </button>
-          ))}
+        {/* 2 DROPDOWNS: SEMUA HARI & SEMUA IMPACT */}
+        <div className="grid grid-cols-2 gap-2 text-xs">
+          <div className="space-y-1">
+            <label className="text-[10px] text-[#737373] font-bold block flex items-center space-x-1">
+              <CalendarIcon className="w-3 h-3 text-[#737373]" />
+              <span>Pilih Hari</span>
+            </label>
+            <CustomSelect
+              value={selectedDateFilter}
+              onChange={(val) => setSelectedDateFilter(val)}
+              options={dateFilterOptions}
+              className="bg-white"
+            />
+          </div>
 
-          <div className="h-4 w-[1px] bg-slate-800 mx-1 shrink-0" />
-
-          {/* Impact Filter */}
-          {[
-            { id: 'ALL', label: 'Semua Impact' },
-            { id: 'HIGH', label: '🔴 High Impact' },
-            { id: 'HIGH_MED', label: '🔴🟠 High & Med' },
-            { id: 'LOW', label: '🟡 Low' },
-          ].map((imp) => (
-            <button
-              key={imp.id}
-              onClick={() => setSelectedImpact(imp.id)}
-              className={`px-3 py-1 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${
-                selectedImpact === imp.id
-                  ? 'bg-cyan-500/20 text-cyan-300 border border-cyan-500/40'
-                  : 'bg-slate-900/70 text-slate-400 border border-slate-800/80 hover:text-slate-200'
-              }`}
-            >
-              {imp.label}
-            </button>
-          ))}
+          <div className="space-y-1">
+            <label className="text-[10px] text-[#737373] font-bold block flex items-center space-x-1">
+              <Flame className="w-3 h-3 text-rose-500" />
+              <span>Tingkat Dampak</span>
+            </label>
+            <CustomSelect
+              value={selectedImpact}
+              onChange={(val) => setSelectedImpact(val)}
+              options={IMPACT_FILTER_OPTIONS}
+              className="bg-white"
+            />
+          </div>
         </div>
 
         {/* Currency Filter Bar */}
-        <div className="flex items-center space-x-1.5 overflow-x-auto pb-1 text-xs">
-          {CURRENCIES.map((curr) => {
-            const flag = COUNTRY_FLAGS[curr] || '';
-            const isActive = selectedCurrency === curr;
-            return (
-              <button
-                key={curr}
-                onClick={() => setSelectedCurrency(curr)}
-                className={`px-2.5 py-1 rounded-lg text-xs font-mono font-bold whitespace-nowrap transition-all flex items-center space-x-1 ${
-                  isActive
-                    ? 'bg-emerald-500/20 text-emerald-300 border border-emerald-500/40'
-                    : 'bg-slate-900/60 text-slate-400 border border-slate-800 hover:text-slate-200'
-                }`}
-              >
-                <span>{flag}</span>
-                <span>{curr}</span>
-              </button>
-            );
-          })}
+        <div className="space-y-1">
+          <label className="text-[10px] text-[#737373] font-bold block">Filter Mata Uang</label>
+          <div className="flex items-center space-x-1.5 overflow-x-auto pb-1 text-xs">
+            {CURRENCIES.map((curr) => {
+              const flag = COUNTRY_FLAGS[curr] || '';
+              const isActive = selectedCurrency === curr;
+              return (
+                <button
+                  key={curr}
+                  onClick={() => setSelectedCurrency(curr)}
+                  className={`px-2.5 py-1.5 rounded-xl text-xs font-mono-num font-bold whitespace-nowrap transition-all flex items-center space-x-1 ${
+                    isActive
+                      ? 'bg-[#0F0F0F] text-white shadow-sm'
+                      : 'bg-white text-[#737373] border border-[#E5E5E2] hover:text-[#0F0F0F]'
+                  }`}
+                >
+                  <span>{flag}</span>
+                  <span>{curr}</span>
+                </button>
+              );
+            })}
+          </div>
         </div>
       </div>
 
-      {/* 4. Events Grouped by Date */}
+      {/* 4. UPCOMING EVENTS LIST */}
       {isLoading ? (
         <div className="space-y-3 py-8">
-          <div className="flex flex-col items-center justify-center space-y-3 text-slate-400">
-            <RotateCcw className="w-7 h-7 text-cyan-400 animate-spin" />
-            <p className="text-xs font-medium">Mengambil kalender ekonomi dari Forex Factory...</p>
+          <div className="flex flex-col items-center justify-center space-y-3 text-[#737373]">
+            <RotateCcw className="w-7 h-7 text-[#0F0F0F] animate-spin" />
+            <p className="text-xs font-medium">Mengambil kalender ekonomi Forex Factory...</p>
           </div>
         </div>
       ) : error ? (
-        <div className="rounded-2xl p-5 bg-rose-950/20 border border-rose-500/30 text-center space-y-3">
-          <AlertTriangle className="w-8 h-8 text-rose-400 mx-auto" />
-          <div className="text-xs font-bold text-rose-300">{error}</div>
+        <div className="card-light p-5 border-rose-300 bg-rose-50 text-center space-y-3">
+          <AlertTriangle className="w-8 h-8 text-rose-500 mx-auto" />
+          <div className="text-xs font-bold text-rose-800">{error}</div>
           <button
             onClick={() => loadCalendar(true)}
-            className="px-4 py-2 rounded-xl bg-rose-500/20 hover:bg-rose-500/30 text-rose-300 border border-rose-500/30 text-xs font-bold transition-all"
+            className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-700 text-white text-xs font-bold transition-all"
           >
             Coba Sinkronisasi Lagi
           </button>
         </div>
-      ) : groupedEvents.length === 0 ? (
-        <div className="rounded-2xl p-8 bg-slate-900/50 border border-slate-800/80 text-center space-y-2">
-          <CalendarIcon className="w-8 h-8 text-slate-600 mx-auto" />
-          <div className="text-xs font-semibold text-slate-300">Tidak ada berita yang sesuai filter</div>
-          <p className="text-[11px] text-slate-500">Coba ubah filter mata uang, tanggal, atau tingkat impact.</p>
+      ) : groupedUpcomingEvents.length === 0 && completedEvents.length === 0 ? (
+        <div className="card-light p-8 text-center space-y-2">
+          <CalendarIcon className="w-8 h-8 text-[#A3A3A3] mx-auto" />
+          <div className="text-xs font-bold text-[#0F0F0F]">Tidak ada berita yang sesuai filter</div>
+          <p className="text-[11px] text-[#737373]">Coba ubah filter mata uang, tanggal, atau tingkat impact.</p>
         </div>
       ) : (
         <div className="space-y-4">
-          {groupedEvents.map((group) => (
+          {/* Upcoming Events by Date */}
+          {groupedUpcomingEvents.map((group) => (
             <div key={group.dateKey} className="space-y-2">
-              {/* Date Header Header Pill */}
               <div className="flex items-center justify-between px-1">
                 <div className="flex items-center space-x-2">
-                  <span className={`text-xs font-extrabold ${group.isToday ? 'text-emerald-400' : 'text-slate-300'}`}>
+                  <span className={`text-xs font-extrabold ${group.isToday ? 'text-[#0F0F0F]' : 'text-[#737373]'}`}>
                     {group.label}
                   </span>
                   {group.isToday && (
-                    <span className="px-2 py-0.5 rounded-full text-[9px] font-bold bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
+                    <span className="px-2 py-0.5 rounded-full text-[9px] font-extrabold bg-[#0F0F0F] text-white">
                       HARI INI
                     </span>
                   )}
                 </div>
-                <span className="text-[10px] text-slate-500 font-medium">
-                  {group.items.length} Rilis Data
+                <span className="text-[10px] text-[#A3A3A3] font-medium">
+                  {group.items.length} Rilis Mendatang
                 </span>
               </div>
 
-              {/* Event Cards */}
               <div className="space-y-2">
-                {group.items.map((event) => {
-                  const flag = COUNTRY_FLAGS[event.country] || '🌐';
-                  const countdown = getEventCountdownText(event.timestamp);
-
-                  return (
-                    <div
-                      key={event.id}
-                      className={`rounded-2xl p-3.5 bg-slate-900/80 border transition-all ${
-                        event.isHighImpact
-                          ? 'border-rose-500/30 hover:border-rose-500/50'
-                          : event.impact === 'Medium'
-                          ? 'border-amber-500/20 hover:border-amber-500/40'
-                          : 'border-slate-800/80 hover:border-slate-700'
-                      }`}
-                    >
-                      {/* Top Row: Currency, Time, Impact Badge */}
-                      <div className="flex items-center justify-between mb-2">
-                        <div className="flex items-center space-x-2">
-                          <span className="text-base">{flag}</span>
-                          <span className="font-mono-num font-bold text-xs text-white">
-                            {event.country}
-                          </span>
-                          <span className="text-slate-600">•</span>
-                          <span className="text-xs font-mono-num font-semibold text-cyan-300">
-                            {event.timeWib}
-                          </span>
-                        </div>
-
-                        <div className="flex items-center space-x-1.5">
-                          {getImpactBadge(event.impact)}
-                        </div>
-                      </div>
-
-                      {/* Event Title */}
-                      <div className="text-xs font-bold text-slate-100 mb-2.5 leading-snug">
-                        {event.title}
-                      </div>
-
-                      {/* Bottom Metric Row: Actual, Forecast, Previous & Link */}
-                      <div className="pt-2 border-t border-slate-800/60 grid grid-cols-4 gap-2 text-[11px] items-center">
-                        <div>
-                          <span className="text-[10px] text-slate-500 block">Actual:</span>
-                          <span className={`font-mono-num font-extrabold ${
-                            event.actual ? 'text-emerald-400' : 'text-slate-400'
-                          }`}>
-                            {event.actual || '-'}
-                          </span>
-                        </div>
-
-                        <div>
-                          <span className="text-[10px] text-slate-500 block">Forecast:</span>
-                          <span className="font-mono-num font-semibold text-slate-300">
-                            {event.forecast}
-                          </span>
-                        </div>
-
-                        <div>
-                          <span className="text-[10px] text-slate-500 block">Previous:</span>
-                          <span className="font-mono-num font-semibold text-slate-400">
-                            {event.previous}
-                          </span>
-                        </div>
-
-                        <div className="text-right flex justify-end">
-                          <span className="text-[10px] font-mono-num text-slate-400 px-1.5 py-0.5 rounded bg-slate-950/60 border border-slate-800">
-                            {countdown}
-                          </span>
-                        </div>
-                      </div>
-                    </div>
-                  );
-                })}
+                {group.items.map((event) => renderEventCard(event, false))}
               </div>
             </div>
           ))}
+
+          {/* 5. COLLAPSIBLE COMPLETED NEWS SECTION */}
+          {completedEvents.length > 0 && (
+            <div className="pt-2">
+              <button
+                type="button"
+                onClick={() => setIsCompletedSectionOpen(!isCompletedSectionOpen)}
+                className="w-full card-light p-3.5 flex items-center justify-between text-left focus:outline-none hover:border-[#D4D4D0] transition-all cursor-pointer"
+              >
+                <div className="flex items-center space-x-2">
+                  <Clock className="w-4 h-4 text-[#737373]" />
+                  <span className="text-xs font-extrabold text-[#0F0F0F]">
+                    Rilis Data yang Sudah Selesai ({completedEvents.length})
+                  </span>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <span className="text-[10px] text-[#737373] font-semibold">
+                    {isCompletedSectionOpen ? 'Sembunyikan' : 'Lihat'}
+                  </span>
+                  <motion.div
+                    animate={{ rotate: isCompletedSectionOpen ? 180 : 0 }}
+                    transition={{ type: 'spring', stiffness: 400, damping: 25 }}
+                  >
+                    <ChevronDown className="w-4 h-4 text-[#737373]" />
+                  </motion.div>
+                </div>
+              </button>
+
+              <AnimatePresence>
+                {isCompletedSectionOpen && (
+                  <motion.div
+                    key="completed-list"
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ type: 'spring', bounce: 0.2, duration: 0.4 }}
+                    className="overflow-hidden space-y-2 pt-2"
+                  >
+                    {completedEvents.map((event) => renderEventCard(event, true))}
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          )}
         </div>
       )}
     </div>

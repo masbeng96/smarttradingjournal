@@ -15,8 +15,8 @@ export function generateDailyCoachingReport(
 ): DailyCoachingReport {
   const dateKey = targetDateStr || new Date().toISOString().split('T')[0];
   
-  // Filter closed trades
-  const closedTrades = trades.filter(t => t.outcome !== 'OPEN');
+  // Filter closed trades (strictly trading bets)
+  const closedTrades = trades.filter(t => t.outcome === 'WIN' || t.outcome === 'LOSS' || t.outcome === 'BE');
   
   const totalTrades = closedTrades.length;
   const wins = closedTrades.filter(t => t.outcome === 'WIN');

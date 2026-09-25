@@ -1,8 +1,8 @@
 export type Currency = 'USD' | 'IDR';
 
-export type TradeDirection = 'BUY' | 'SELL';
+export type TradeDirection = 'BUY' | 'SELL' | 'DEPOSIT' | 'WITHDRAWAL';
 
-export type TradeOutcome = 'WIN' | 'LOSS' | 'BE' | 'OPEN';
+export type TradeOutcome = 'WIN' | 'LOSS' | 'BE' | 'OPEN' | 'DEPOSIT' | 'WITHDRAWAL';
 
 export type EmotionTag = 
   | 'Disciplined' 
@@ -152,15 +152,45 @@ export interface UserProfile {
   joinedDate?: string;
 }
 
+export interface MT5DealData {
+  ticket: number | string;
+  order?: number | string;
+  time: number;
+  symbol: string;
+  type: 'BUY' | 'SELL' | 'DEPOSIT' | 'WITHDRAWAL';
+  deal_type?: 'TRADE' | 'DEPOSIT' | 'WITHDRAWAL';
+  volume: number;
+  price: number;
+  sl?: number;
+  tp?: number;
+  profit: number;
+  comment?: string;
+}
+
+export interface MT5PositionData {
+  ticket: number | string;
+  time: number;
+  symbol: string;
+  type: 'BUY' | 'SELL';
+  volume: number;
+  price_open: number;
+  sl?: number;
+  tp?: number;
+  profit: number;
+}
+
 export interface MT5AccountData {
   akun: string;
   balance: number;
   equity: number;
   margin: number;
   floating_pnl: number;
+  initial_deposit?: number;
   lastUpdated?: string;
   isConnected?: boolean;
   error?: string;
+  deals?: MT5DealData[];
+  positions?: MT5PositionData[];
 }
 
 export interface AppVersionInfo {

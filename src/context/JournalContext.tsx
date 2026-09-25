@@ -1,6 +1,8 @@
 import React, { createContext, useContext, useState, useEffect, useMemo } from 'react';
 import { 
   TradeEntry, 
+  TradeDirection,
+  TradeOutcome,
   PlanSettings, 
   DailyCoachingReport, 
   AppNotification, 
@@ -192,39 +194,170 @@ export const JournalProvider: React.FC<{ children: React.ReactNode }> = ({ child
       setMt5Account1(account1);
       setMt5Account2(account2);
 
+      let activeAccount: MT5AccountData | null = null;
+
       // Bind the active account based on logged-in user email, or accumulated multi-account total
       if (assignedAccountId === 1) {
         if (account1.isConnected) {
+          activeAccount = account1;
           setMt5Data(account1);
           setMt5Error(null);
         } else {
-          setMt5Data(null);
           setMt5Error(account1.error || 'Gagal memuat Akun 1 MT5');
         }
       } else if (assignedAccountId === 2) {
         if (account2.isConnected) {
+          activeAccount = account2;
           setMt5Data(account2);
           setMt5Error(null);
         } else {
-          setMt5Data(null);
           setMt5Error(account2.error || 'Gagal memuat Akun 2 MT5');
         }
-      } else if (accumulated.isConnected) {
-        // Multi-Account Accumulation: Akun 1 + Akun 2 into single Total Saldo
-        setMt5Data({
-          akun: 'Total Saldo Akun (1 & 2)',
-          balance: accumulated.totalBalance,
-          equity: accumulated.totalEquity,
-          margin: accumulated.totalMargin,
-          floating_pnl: accumulated.totalFloatingPnl,
-          lastUpdated: accumulated.lastUpdated,
+      } else if (account1.isConnected || account2.isConnected || accumulated.isConnected) {
+        // Multi-Account / Guest mode: use accumulated or whichever account is connected
+        const primary = account1.isConnected ? account1 : account2;
+        const totalBal = (account1.isConnected ? account1.balance : 0) + (account2.isConnected ? account2.balance : 0);
+        const totalEq = (account1.isConnected ? account1.equity : 0) + (account2.isConnected ? account2.equity : 0);
+        const totalMargin = (account1.isConnected ? account1.margin : 0) + (account2.isConnected ? account2.margin : 0);
+        const totalFloating = (account1.isConnected ? account1.floating_pnl : 0) + (account2.isConnected ? account2.floating_pnl : 0);
+
+        activeAccount = {
+          akun: account1.isConnected && account2.isConnected ? 'Total Saldo Akun (1 & 2)' : primary.akun,
+          balance: totalBal,
+          equity: totalEq,
+          margin: totalMargin,
+          floating_pnl: totalFloating,
+          initial_deposit: accumulated.initial_deposit,
+          lastUpdated: primary.lastUpdated || new Date().toLocaleTimeString('id-ID'),
           isConnected: true,
-        });
+          deals: [...(account1.deals || []), ...(account2.deals || [])],
+          positions: [...(account1.positions || []), ...(account2.positions || [])],
+        };
+        setMt5Data(activeAccount);
         setMt5Error(null);
       } else {
-        setMt5Data(null);
         const err = [account1.error, account2.error].filter(Boolean).join(' \n');
         setMt5Error(err || 'Gagal memuat data MT5');
+      }
+
+      // Automatically sync open positions and closed deals from MT5 into trades state
+      if (activeAccount && ((activeAccount.deals && activeAccount.deals.length > 0) || (activeAccount.positions && activeAccount.positions.length > 0))) {
+        const syncedTrades: TradeEntry[] = [];
+        const activePosIds = new Set<string>();
+
+        // 1. Sync live open positions (with live SL & TP)
+        if (activeAccount.positions && activeAccount.positions.length > 0) {
+          activeAccount.positions.forEach((pos) => {
+            const posId = `mt5-pos-${pos.ticket}`;
+            activePosIds.add(posId);
+            syncedTrades.push({
+              id: posId,
+              date: new Date(pos.time * 1000).toISOString(),
+              pair: pos.symbol || 'XAUUSD',
+              direction: pos.type || 'BUY',
+              lotSize: pos.volume || 0.01,
+              recommendedLotSize: pos.volume || 0.01,
+              entryPrice: pos.price_open || 0,
+              stopLoss: Number(pos.sl ?? 0),
+              takeProfit: Number(pos.tp ?? 0),
+              closePrice: undefined,
+              pnl: Number(pos.profit.toFixed(2)),
+              outcome: 'OPEN',
+              emotions: ['Disciplined'],
+              strategy: 'MT5 Live Position',
+              notes: `Live MT5 Order Ticket #${pos.ticket}`,
+              createdAt: pos.time * 1000,
+              isCompliantWithRisk: true,
+            });
+          });
+        }
+
+        // 2. Sync closed deals, deposits, and withdrawals (with historical SL & TP)
+        if (activeAccount.deals && activeAccount.deals.length > 0) {
+          activeAccount.deals.forEach((deal) => {
+            const sym = (deal.symbol || '').toUpperCase();
+            const isDepositOrWithdrawal = 
+              deal.deal_type === 'DEPOSIT' || 
+              deal.deal_type === 'WITHDRAWAL' || 
+              deal.type === 'DEPOSIT' || 
+              deal.type === 'WITHDRAWAL' || 
+              sym === 'EXTERNAL' || 
+              sym === 'DEPOSIT' || 
+              sym === 'WITHDRAWAL' || 
+              sym === 'BALANCE' || 
+              deal.volume <= 0;
+
+            if (isDepositOrWithdrawal) {
+              const isDep = deal.profit >= 0 || deal.type === 'DEPOSIT' || deal.deal_type === 'DEPOSIT';
+              const outcomeType: TradeOutcome = isDep ? 'DEPOSIT' : 'WITHDRAWAL';
+              const directionType: TradeDirection = isDep ? 'DEPOSIT' : 'WITHDRAWAL';
+              const nominal = Math.abs(Number(deal.profit.toFixed(2)));
+
+              syncedTrades.push({
+                id: `mt5-fund-${deal.ticket}`,
+                date: new Date(deal.time * 1000).toISOString(),
+                pair: isDep ? 'DEPOSIT' : 'WITHDRAWAL',
+                direction: directionType,
+                lotSize: 0,
+                recommendedLotSize: 0,
+                entryPrice: 0,
+                stopLoss: 0,
+                takeProfit: 0,
+                closePrice: 0,
+                pnl: isDep ? nominal : -nominal,
+                outcome: outcomeType,
+                emotions: ['Disciplined'],
+                strategy: isDep ? 'Deposit Modal Compounding' : 'Penarikan Dana (Withdrawal)',
+                notes: deal.comment ? `${isDep ? 'Deposit' : 'Withdrawal'}: ${deal.comment}` : `Transaksi MT5 #${deal.ticket}`,
+                createdAt: deal.time * 1000,
+                isCompliantWithRisk: true,
+              });
+              return;
+            }
+
+            // Regular trading deal
+            const isProfit = deal.profit > 0;
+            const isLoss = deal.profit < 0;
+            syncedTrades.push({
+              id: `mt5-${deal.ticket}`,
+              date: new Date(deal.time * 1000).toISOString(),
+              pair: deal.symbol || 'XAUUSD',
+              direction: deal.type || 'BUY',
+              lotSize: deal.volume || 0.01,
+              recommendedLotSize: deal.volume || 0.01,
+              entryPrice: deal.price || 0,
+              stopLoss: Number(deal.sl ?? 0),
+              takeProfit: Number(deal.tp ?? 0),
+              closePrice: deal.price || 0,
+              pnl: Number(deal.profit.toFixed(2)),
+              outcome: isProfit ? 'WIN' : isLoss ? 'LOSS' : 'BE',
+              emotions: ['Disciplined'],
+              strategy: 'MT5 Live Execution',
+              notes: deal.comment ? `MT5 #${deal.ticket} (${deal.comment})` : `Auto-synced MT5 Ticket #${deal.ticket}`,
+              createdAt: deal.time * 1000,
+              isCompliantWithRisk: true,
+            });
+          });
+        }
+
+        // Merge without duplicating existing ticket IDs & clean up closed positions
+        setTrades((prev) => {
+          const map = new Map<string, TradeEntry>();
+          // Put synced trades first
+          syncedTrades.forEach((t) => map.set(t.id, t));
+          // Put previous non-MT5 trades and keep them unless they were closed open positions
+          prev.forEach((t) => {
+            if (t.id.startsWith('mt5-pos-')) {
+              // Only keep if still active in activePosIds
+              if (activePosIds.has(t.id)) {
+                if (!map.has(t.id)) map.set(t.id, t);
+              }
+            } else {
+              if (!map.has(t.id)) map.set(t.id, t);
+            }
+          });
+          return Array.from(map.values()).sort((a, b) => b.createdAt - a.createdAt);
+        });
       }
     } catch (error: any) {
       if (error?.name === 'AbortError' || error?.message?.includes('aborted')) {
@@ -241,13 +374,19 @@ export const JournalProvider: React.FC<{ children: React.ReactNode }> = ({ child
     }
   };
 
-  // Fetch MT5 data using AbortController with cleanup handling
+  // Fetch MT5 data using AbortController with cleanup handling and auto-polling every 10s
   useEffect(() => {
     const controller = new AbortController();
     refreshMT5Data(controller.signal);
 
+    // Auto-poll MT5 live sync every 10 seconds
+    const interval = setInterval(() => {
+      refreshMT5Data();
+    }, 10000);
+
     return () => {
       controller.abort();
+      clearInterval(interval);
     };
   }, [assignedAccountId]);
 
@@ -414,7 +553,7 @@ export const JournalProvider: React.FC<{ children: React.ReactNode }> = ({ child
   // Calculate current dynamic equity (bonds live MT5 equity if available and non-zero)
   const totalRealizedPnl = useMemo(() => {
     return trades
-      .filter(t => t.outcome !== 'OPEN')
+      .filter(t => t.outcome === 'WIN' || t.outcome === 'LOSS' || t.outcome === 'BE')
       .reduce((sum, t) => sum + (Number(t.pnl) || 0), 0);
   }, [trades]);
 
@@ -426,9 +565,9 @@ export const JournalProvider: React.FC<{ children: React.ReactNode }> = ({ child
     return Math.max(0, Number((settings.initialCapital + totalRealizedPnl).toFixed(2)));
   }, [settings.initialCapital, totalRealizedPnl, mt5Data, assignedAccountId]);
 
-  // Win Rate and stats
+  // Win Rate and stats (strictly trading bets, excluding deposits/withdrawals)
   const { winRate, profitFactor } = useMemo(() => {
-    const closed = trades.filter(t => t.outcome !== 'OPEN');
+    const closed = trades.filter(t => t.outcome === 'WIN' || t.outcome === 'LOSS' || t.outcome === 'BE');
     if (closed.length === 0) return { winRate: 0, profitFactor: 0 };
     
     const wins = closed.filter(t => t.outcome === 'WIN');

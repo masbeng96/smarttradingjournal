@@ -1,22 +1,19 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { useJournal } from '../../context/JournalContext';
 import { formatCurrency, formatPercent } from '../../lib/utils';
 import { 
   TrendingUp, 
-  TrendingDown, 
-  ShieldCheck, 
   Target, 
-  Calendar, 
-  ArrowUpRight, 
-  Sparkles,
-  Zap,
-  ChevronRight,
-  BookOpen,
+  ChevronRight, 
   RotateCcw,
-  Activity,
-  WifiOff,
   CalendarDays,
-  AlertTriangle
+  Eye,
+  EyeOff,
+  LineChart as LineChartIcon,
+  ShieldAlert,
+  Sparkles,
+  RefreshCw,
+  LogIn
 } from 'lucide-react';
 import { 
   ResponsiveContainer, 
@@ -34,349 +31,476 @@ export const OverviewDashboard: React.FC = () => {
     totalRealizedPnl, 
     winRate, 
     profitFactor, 
-    activeLotAdvice,
     trades, 
     latestReport, 
     setActiveTab,
-    setIsNewTradeModalOpen,
     mt5Data,
     assignedAccountId,
     userProfile,
     setIsAuthModalOpen,
     isMT5Loading,
-    mt5Error,
     refreshMT5Data
   } = useJournal();
 
-  const growthPercent = settings.initialCapital > 0 
-    ? (totalRealizedPnl / settings.initialCapital) * 100 
+  const [isBalanceHidden, setIsBalanceHidden] = useState<boolean>(false);
+
+  const isMT5 = Boolean(mt5Data && mt5Data.isConnected);
+
+  // Dynamic Start Capital: If MT5 is connected, use initial_deposit from MT5 history or calculate (Balance - Realized PnL)
+  const effectiveStartCap = React.useMemo(() => {
+    if (isMT5 && mt5Data) {
+      if (mt5Data.initial_deposit && mt5Data.initial_deposit > 0) {
+        return Number(mt5Data.initial_deposit.toFixed(2));
+      }
+      // Calculate starting balance before trades were executed
+      const calculatedStart = mt5Data.balance - totalRealizedPnl;
+      if (calculatedStart > 0) {
+        return Number(calculatedStart.toFixed(2));
+      }
+      return Number(mt5Data.balance.toFixed(2));
+    }
+    return settings.initialCapital > 0 ? settings.initialCapital : 1000;
+  }, [isMT5, mt5Data, totalRealizedPnl, settings.initialCapital]);
+
+  const growthPercent = effectiveStartCap > 0 
+    ? (totalRealizedPnl / effectiveStartCap) * 100 
     : 0;
 
   // Daily target calculation
   const monthlyTargetAmount = currentEquity * (settings.monthlyTargetPercent / 100);
   const dailyTargetAmount = monthlyTargetAmount / (settings.tradingDaysPerMonth || 22);
 
-  // Chart data: chronological equity curve
+  // Sparkline data for hero card & chart (Starts with initial deposit, adds trading profits)
+  const sparklineData = React.useMemo(() => {
+    const startCap = effectiveStartCap;
+    let running = startCap;
+    // Strictly filter closed trading bets (excluding deposit and withdrawal transactions)
+    const sortedTrades = [...trades]
+      .filter(t => t.outcome === 'WIN' || t.outcome === 'LOSS' || t.outcome === 'BE')
+      .sort((a, b) => a.createdAt - b.createdAt);
+    
+    const points: { balance: number; equity: number }[] = [{ balance: startCap, equity: startCap }];
+
+    sortedTrades.forEach((trade) => {
+      running += trade.pnl;
+      points.push({ 
+        balance: Number(running.toFixed(2)), 
+        equity: Number(running.toFixed(2)) 
+      });
+    });
+
+    if (isMT5 && mt5Data) {
+      points.push({
+        balance: Number(mt5Data.balance.toFixed(2)),
+        equity: Number(mt5Data.equity.toFixed(2)),
+      });
+    }
+
+    if (points.length === 1) {
+      points.push({ balance: startCap, equity: startCap });
+      points.push({ balance: startCap, equity: startCap });
+    }
+
+    return points;
+  }, [trades, effectiveStartCap, isMT5, mt5Data]);
+
+  // Full chart data (Starts with Start Capital, plots each closed trade to Live MT5 balance)
   const chartData = React.useMemo(() => {
-    let runningBalance = settings.initialCapital;
-    const sortedTrades = [...trades].sort((a, b) => a.createdAt - b.createdAt);
+    const startCap = effectiveStartCap;
+    let runningBalance = startCap;
+    // Strictly filter closed trading bets (excluding deposit and withdrawal transactions)
+    const sortedTrades = [...trades]
+      .filter(t => t.outcome === 'WIN' || t.outcome === 'LOSS' || t.outcome === 'BE')
+      .sort((a, b) => a.createdAt - b.createdAt);
     
     const points = [{
       name: 'Start',
-      balance: settings.initialCapital,
+      balance: startCap,
+      equity: startCap,
       pnl: 0,
     }];
 
     sortedTrades.forEach((trade, index) => {
-      if (trade.outcome !== 'OPEN') {
-        runningBalance += trade.pnl;
-        points.push({
-          name: `T${index + 1}`,
-          balance: Number(runningBalance.toFixed(2)),
-          pnl: trade.pnl,
-        });
-      }
+      runningBalance += trade.pnl;
+      points.push({
+        name: `T${index + 1}`,
+        balance: Number(runningBalance.toFixed(2)),
+        equity: Number(runningBalance.toFixed(2)),
+        pnl: trade.pnl,
+      });
     });
 
-    return points;
-  }, [trades, settings.initialCapital]);
+    if (isMT5 && mt5Data) {
+      points.push({
+        name: 'Live MT5',
+        balance: Number(mt5Data.balance.toFixed(2)),
+        equity: Number(mt5Data.equity.toFixed(2)),
+        pnl: Number((mt5Data.floating_pnl ?? 0).toFixed(2)),
+      });
+    }
 
-  // Recent 4 trades
-  const recentTrades = trades.slice(0, 4);
+    if (points.length === 1) {
+      points.push({
+        name: 'Sekarang',
+        balance: startCap,
+        equity: startCap,
+        pnl: 0,
+      });
+    }
+
+    return points;
+  }, [trades, effectiveStartCap, isMT5, mt5Data]);
+
+  // Recent trades
+  const recentTrades = trades.slice(0, 5);
+
+  const getTradeDateLabel = (timestamp: number) => {
+    const tradeDate = new Date(timestamp);
+    const today = new Date();
+    const yesterday = new Date();
+    yesterday.setDate(today.getDate() - 1);
+
+    if (tradeDate.toDateString() === today.toDateString()) return 'Today';
+    if (tradeDate.toDateString() === yesterday.toDateString()) return 'Yesterday';
+    return tradeDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
+  };
+
+  const getPairIcon = (pair: string, direction?: string) => {
+    const p = (pair || '').toUpperCase();
+    const d = (direction || '').toUpperCase();
+    if (p === 'DEPOSIT' || d === 'DEPOSIT') return '💰';
+    if (p === 'WITHDRAWAL' || d === 'WITHDRAWAL') return '🏦';
+    if (p.includes('XAU') || p.includes('GOLD')) return '🥇';
+    if (p.includes('BTC') || p.includes('CRYPTO') || p.includes('ETH')) return '₿';
+    if (p.includes('EUR')) return '€';
+    if (p.includes('GBP')) return '£';
+    if (p.includes('JPY')) return '¥';
+    if (p.includes('NAS') || p.includes('US100') || p.includes('US30') || p.includes('SPX')) return '📈';
+    return '$';
+  };
 
   return (
-    <div className="p-4 space-y-4">
-      {/* 1. Hero Balance & MT5 Live Sync Card */}
-      <div className="relative overflow-hidden rounded-3xl p-5 bg-gradient-to-br from-slate-900 via-[#0b1324] to-[#07131e] border border-emerald-500/20 shadow-glow-emerald">
-        {/* Ambient Glows */}
-        <div className="absolute -top-12 -right-12 w-36 h-36 bg-emerald-500/20 rounded-full blur-2xl pointer-events-none" />
-        <div className="absolute -bottom-12 -left-12 w-36 h-36 bg-cyan-500/15 rounded-full blur-2xl pointer-events-none" />
-
-        <div className="relative z-10 space-y-3.5">
-          {/* Header Bar with Live Indicator & Refresh */}
-          <div className="flex items-center justify-between">
+    <div className="p-4 space-y-4 max-w-lg mx-auto">
+      {/* 1. HERO TOTAL BALANCE CARD (10% ACCENT - DEEP SLEEK BLACK #0F0F0F) */}
+      <div className="card-dark-hero relative overflow-hidden p-5">
+        <div className="flex items-start justify-between relative z-10">
+          <div className="space-y-1">
             <div className="flex items-center space-x-2">
-              <span className="text-xs font-bold uppercase tracking-wider text-slate-300">
-                Total Saldo Akun (Equity)
+              <span className="text-xs font-semibold text-[#A3A3A3] tracking-tight">
+                Total Balance,
               </span>
-              
-              {/* MT5 Status Badge */}
-              {mt5Data?.isConnected ? (
-                <div className="flex items-center space-x-1.5 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-                  <span className="relative flex h-2 w-2">
-                    <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
-                    <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
-                  </span>
-                  <span>{mt5Data.akun ? `MT5 Live: ${mt5Data.akun}` : 'MT5 Live Multi-Akun'}</span>
-                </div>
-              ) : isMT5Loading ? (
-                <div className="flex items-center space-x-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-amber-500/20 text-amber-300 border border-amber-500/30">
-                  <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
-                  <span>Syncing MT5...</span>
-                </div>
-              ) : mt5Error ? (
-                <div className="flex items-center space-x-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-rose-500/20 text-rose-300 border border-rose-500/30">
-                  <WifiOff className="w-2.5 h-2.5" />
-                  <span>MT5 Offline</span>
-                </div>
-              ) : (
-                <button
-                  onClick={() => setIsAuthModalOpen(true)}
-                  className="flex items-center space-x-1 px-2 py-0.5 rounded-full text-[10px] font-semibold bg-slate-800 text-slate-400 hover:text-emerald-300 hover:bg-slate-700 border border-slate-700 transition-all"
-                  title="Login untuk mengaktifkan Auto-Sync MT5"
-                >
-                  <span>Manual Offline</span>
-                  <span className="text-[9px] text-emerald-400 font-bold ml-0.5">(Login MT5)</span>
-                </button>
-              )}
+              <button
+                onClick={() => setIsBalanceHidden(!isBalanceHidden)}
+                className="text-[#737373] hover:text-white transition-colors"
+                title={isBalanceHidden ? "Tampilkan Saldo" : "Sembunyikan Saldo"}
+              >
+                {isBalanceHidden ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
+              </button>
             </div>
 
-            <div className="flex items-center space-x-1.5">
-              {assignedAccountId && (
-                <button
-                  onClick={() => refreshMT5Data()}
-                  disabled={isMT5Loading}
-                  title="Refresh Data MT5 Real-Time"
-                  className="p-1 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-white transition-all disabled:opacity-50"
-                >
-                  <RotateCcw className={`w-3.5 h-3.5 ${isMT5Loading ? 'animate-spin text-emerald-400' : ''}`} />
-                </button>
-              )}
-
-              <div className={`flex items-center space-x-1 px-2.5 py-0.5 rounded-full text-xs font-bold ${
-                (mt5Data ? mt5Data.floating_pnl : growthPercent) >= 0 
-                  ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' 
-                  : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
-              }`}>
-                {(mt5Data ? mt5Data.floating_pnl : growthPercent) >= 0 ? <TrendingUp className="w-3 h-3" /> : <TrendingDown className="w-3 h-3" />}
-                <span>
-                  {mt5Data 
-                    ? `${mt5Data.floating_pnl >= 0 ? '+' : ''}${formatCurrency(mt5Data.floating_pnl, settings.currency)}`
-                    : formatPercent(growthPercent, 1)
-                  }
-                </span>
-              </div>
+            {/* Huge Bold Balance */}
+            <div className="text-3xl sm:text-4xl font-black font-mono-num tracking-tight text-white">
+              {isBalanceHidden ? '••••••••' : formatCurrency(currentEquity, settings.currency)}
             </div>
           </div>
 
-          {/* Equity Main Number */}
-          <div className="flex items-baseline justify-between">
-            <div className="text-3xl font-black font-mono-num tracking-tight text-white glow-text-emerald">
-              {formatCurrency(currentEquity, settings.currency)}
-            </div>
-            {assignedAccountId && mt5Data?.isConnected ? (
-              <span className="text-[11px] text-emerald-400/90 font-mono-num font-semibold">
-                Auto-Sync Akun {assignedAccountId} 🟢
-              </span>
-            ) : (
-              <span className="text-[11px] text-slate-400 font-mono-num">
-                Data Default Manual
-              </span>
-            )}
+          {/* Sparkline Curve on Right side of Hero Card */}
+          <div className="w-28 h-12 pt-1 opacity-90">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={sparklineData}>
+                <defs>
+                  <linearGradient id="heroSparkGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#10b981" stopOpacity={0.4} />
+                    <stop offset="100%" stopColor="#10b981" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <Area
+                  type="monotone"
+                  dataKey="equity"
+                  stroke="#10b981"
+                  strokeWidth={2.2}
+                  fill="url(#heroSparkGrad)"
+                  dot={false}
+                />
+              </AreaChart>
+            </ResponsiveContainer>
           </div>
+        </div>
 
-          {/* MT5 Metrics Grid */}
-          <div className="pt-2.5 border-t border-slate-800/80 grid grid-cols-2 sm:grid-cols-4 gap-2 text-xs">
-            <div className="bg-slate-900/50 p-2 rounded-xl border border-slate-800/60">
-              <span className="text-slate-400 block text-[10px]">Balance (Saldo):</span>
-              <span className="font-semibold text-slate-200 font-mono-num text-xs">
-                {formatCurrency(mt5Data ? mt5Data.balance : settings.initialCapital, settings.currency)}
-              </span>
-            </div>
-            
-            <div className="bg-slate-900/50 p-2 rounded-xl border border-slate-800/60">
-              <span className="text-slate-400 block text-[10px]">Floating PnL:</span>
-              <span className={`font-semibold font-mono-num text-xs ${
-                (mt5Data?.floating_pnl ?? 0) >= 0 ? 'text-emerald-400' : 'text-rose-400'
-              }`}>
+        {/* Growth Badge & MT5 Status Row (Refresh button removed) */}
+        <div className="flex items-center justify-between pt-4 mt-2 border-t border-neutral-800/80">
+          <div className="flex items-center space-x-2">
+            <div className="flex items-center space-x-1 px-2.5 py-1 rounded-full bg-emerald-500/15 border border-emerald-500/25 text-emerald-400 text-xs font-bold">
+              <TrendingUp className="w-3.5 h-3.5" />
+              <span>
                 {mt5Data 
-                  ? `${(mt5Data.floating_pnl ?? 0) >= 0 ? '+' : ''}${formatCurrency(mt5Data.floating_pnl ?? 0, settings.currency)}`
-                  : '$0.00 (Offline)'
+                  ? `${mt5Data.floating_pnl >= 0 ? '+' : ''}${formatCurrency(mt5Data.floating_pnl, settings.currency)}`
+                  : `${growthPercent >= 0 ? '+' : ''}${formatPercent(growthPercent, 1)} this month`
                 }
               </span>
             </div>
 
-            <div className="bg-slate-900/50 p-2 rounded-xl border border-slate-800/60">
-              <span className="text-slate-400 block text-[10px]">Margin Terpakai:</span>
-              <span className="font-semibold text-cyan-300 font-mono-num text-xs">
-                {formatCurrency(mt5Data?.margin ?? 0, settings.currency)}
-              </span>
-            </div>
-
-            <div className="bg-slate-900/50 p-2 rounded-xl border border-slate-800/60">
-              <span className="text-slate-400 block text-[10px]">Realized Jurnal:</span>
-              <span className={`font-semibold font-mono-num text-xs ${
-                totalRealizedPnl >= 0 ? 'text-emerald-400' : 'text-rose-400'
-              }`}>
-                {totalRealizedPnl >= 0 ? '+' : ''}
-                {formatCurrency(totalRealizedPnl, settings.currency)}
-              </span>
-            </div>
+            {/* MT5 Account Chip */}
+            {assignedAccountId && mt5Data?.isConnected ? (
+              <div className="flex items-center space-x-1.5 px-2 py-0.5 rounded-full bg-neutral-900 border border-neutral-800 text-[10px] text-emerald-400 font-mono-num font-semibold">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                <span>MT5 Live #{assignedAccountId}</span>
+              </div>
+            ) : isMT5Loading ? (
+              <div className="flex items-center space-x-1 px-2 py-0.5 rounded-full bg-neutral-900 text-[10px] text-amber-400">
+                <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping" />
+                <span>Syncing...</span>
+              </div>
+            ) : null}
           </div>
+        </div>
 
-          {/* Sync Timestamp Info */}
-          <div className="flex items-center justify-between text-[10px] text-slate-500 pt-0.5">
-            <span className="flex items-center space-x-1">
-              <Activity className="w-3 h-3 text-emerald-500/70" />
-              <span>
-                {assignedAccountId 
-                  ? `Fetch 1x saat Mount • ${userProfile?.email} (Akun ${assignedAccountId})` 
-                  : 'Mode Offline (Tanpa Auto-Sync MT5)'}
-              </span>
-            </span>
-            <span className="font-mono text-[10px]">
-              {assignedAccountId
-                ? (mt5Data?.lastUpdated 
-                    ? `Update: ${mt5Data.lastUpdated}` 
-                    : (isMT5Loading ? 'Menghubungkan...' : (mt5Error ? 'Gagal Terhubung' : 'Offline')))
-                : 'Login untuk Live Sync'}
+        {/* Sub metrics grid */}
+        <div className="grid grid-cols-4 gap-2 pt-3 mt-2 border-t border-neutral-800/60 text-center">
+          <div>
+            <span className="text-[10px] text-[#737373] block">Balance</span>
+            <span className="text-xs font-bold font-mono-num text-white">
+              {formatCurrency(mt5Data ? mt5Data.balance : settings.initialCapital, settings.currency)}
             </span>
           </div>
-
-          {/* Visual Error Diagnostic Box (Temporarily displayed for debugging MT5 connection) */}
-          {assignedAccountId && mt5Error && (
-            <div className="mt-2.5 p-3 rounded-2xl bg-rose-950/70 border border-rose-500/40 text-xs text-rose-200 space-y-2 animate-fadeIn shadow-sm">
-              <div className="flex items-center justify-between font-bold text-rose-300">
-                <span className="flex items-center space-x-1.5 text-xs">
-                  <AlertTriangle className="w-4 h-4 text-rose-400 shrink-0" />
-                  <span>Log Diagnosa Error MT5 (Akun {assignedAccountId})</span>
-                </span>
-                <button 
-                  onClick={() => refreshMT5Data()}
-                  disabled={isMT5Loading}
-                  className="px-2.5 py-1 rounded-lg bg-rose-500/25 hover:bg-rose-500/40 text-rose-200 border border-rose-500/40 font-semibold text-[11px] transition-colors flex items-center space-x-1 disabled:opacity-50"
-                >
-                  <RotateCcw className={`w-3 h-3 ${isMT5Loading ? 'animate-spin' : ''}`} />
-                  <span>{isMT5Loading ? 'Memeriksa...' : 'Tes Ulang'}</span>
-                </button>
-              </div>
-              <div className="bg-slate-950/90 p-2.5 rounded-xl border border-rose-900/60 font-mono text-[11px] text-rose-300 break-all whitespace-pre-wrap leading-relaxed select-text">
-                {mt5Error}
-              </div>
-              <div className="text-[10px] text-slate-400 flex flex-wrap items-center justify-between gap-1 pt-0.5 border-t border-rose-900/30">
-                <span>Headers: <code className="text-slate-300 bg-slate-900 px-1 py-0.5 rounded">x-api-key: TokenRahasia2026, Accept: application/json</code></span>
-                <span>Endpoint: <code className="text-slate-300 bg-slate-900 px-1 py-0.5 rounded">http://202.155.94.173/api/account/{assignedAccountId}</code></span>
-              </div>
-            </div>
-          )}
+          <div>
+            <span className="text-[10px] text-[#737373] block">Floating</span>
+            <span className={`text-xs font-bold font-mono-num ${(mt5Data?.floating_pnl ?? 0) >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+              {mt5Data ? `${(mt5Data.floating_pnl ?? 0) >= 0 ? '+' : ''}${formatCurrency(mt5Data.floating_pnl ?? 0, settings.currency)}` : '$0.00'}
+            </span>
+          </div>
+          <div>
+            <span className="text-[10px] text-[#737373] block">Margin</span>
+            <span className="text-xs font-bold font-mono-num text-neutral-300">
+              {formatCurrency(mt5Data?.margin ?? 0, settings.currency)}
+            </span>
+          </div>
+          <div>
+            <span className="text-[10px] text-[#737373] block">Realized</span>
+            <span className={`text-xs font-bold font-mono-num ${totalRealizedPnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
+              {totalRealizedPnl >= 0 ? '+' : ''}{formatCurrency(totalRealizedPnl, settings.currency)}
+            </span>
+          </div>
         </div>
       </div>
 
-      {/* 2. Dynamic Lot Sizing & Risk Directive Banner */}
-      <div className="rounded-2xl p-3.5 bg-gradient-to-r from-emerald-950/40 via-slate-900 to-cyan-950/40 border border-emerald-500/30 flex items-center justify-between shadow-sm">
-        <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 rounded-xl bg-emerald-500/20 border border-emerald-500/30 flex items-center justify-center text-emerald-400">
-            <Zap className="w-5 h-5" />
+      {/* 2. QUICK ACTION GRID (4 PILL BUTTONS) */}
+      <div className="grid grid-cols-4 gap-2.5">
+        {/* Action 1: MT5 Sync / Login */}
+        <button
+          onClick={() => {
+            if (userProfile) refreshMT5Data();
+            else setIsAuthModalOpen(true);
+          }}
+          className="pill-action-btn p-3 flex flex-col items-center justify-center space-y-1.5 group text-center"
+        >
+          <div className="w-10 h-10 rounded-2xl bg-[#0F0F0F] text-white flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform">
+            {userProfile ? (
+              <RefreshCw className={`w-5 h-5 stroke-[2.2] ${isMT5Loading ? 'animate-spin text-emerald-400' : ''}`} />
+            ) : (
+              <LogIn className="w-5 h-5 stroke-[2.2]" />
+            )}
           </div>
-          <div>
-            <div className="text-xs text-slate-400 font-medium">Rekomendasi Lot Sesi Ini</div>
-            <div className="text-base font-extrabold font-mono-num text-emerald-300">
-              {activeLotAdvice.recommendedLot} Lot
-              <span className="text-xs font-normal text-slate-400 ml-1.5">
-                (Risk {settings.riskPerTradePercent}%)
-              </span>
-            </div>
+          <span className="text-[11px] font-bold text-[#0F0F0F]">
+            {userProfile ? 'Sync MT5' : 'Masuk Akun'}
+          </span>
+        </button>
+
+        {/* Action 2: Compound Planner */}
+        <button
+          onClick={() => setActiveTab('planner')}
+          className="pill-action-btn p-3 flex flex-col items-center justify-center space-y-1.5 group text-center"
+        >
+          <div className="w-10 h-10 rounded-2xl bg-[#F0F0ED] text-[#0F0F0F] flex items-center justify-center border border-[#E5E5E2] group-hover:scale-105 transition-transform">
+            <LineChartIcon className="w-5 h-5 stroke-[2.2]" />
           </div>
-        </div>
+          <span className="text-[11px] font-bold text-[#0F0F0F]">Target Plan</span>
+        </button>
+
+        {/* Action 3: Lot Size Calc / Risk */}
         <button
           onClick={() => setActiveTab('risk')}
-          className="px-3 py-1.5 rounded-xl bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/30 text-emerald-300 text-xs font-bold transition-all flex items-center space-x-1"
+          className="pill-action-btn p-3 flex flex-col items-center justify-center space-y-1.5 group text-center"
         >
-          <span>Atur Risk</span>
-          <ChevronRight className="w-3.5 h-3.5" />
+          <div className="w-10 h-10 rounded-2xl bg-[#F0F0ED] text-[#0F0F0F] flex items-center justify-center border border-[#E5E5E2] group-hover:scale-105 transition-transform">
+            <ShieldAlert className="w-5 h-5 stroke-[2.2]" />
+          </div>
+          <span className="text-[11px] font-bold text-[#0F0F0F]">Risk & Lot</span>
+        </button>
+
+        {/* Action 4: News Calendar */}
+        <button
+          onClick={() => setActiveTab('calendar')}
+          className="pill-action-btn p-3 flex flex-col items-center justify-center space-y-1.5 group text-center"
+        >
+          <div className="w-10 h-10 rounded-2xl bg-[#F0F0ED] text-[#0F0F0F] flex items-center justify-center border border-[#E5E5E2] group-hover:scale-105 transition-transform">
+            <CalendarDays className="w-5 h-5 stroke-[2.2]" />
+          </div>
+          <span className="text-[11px] font-bold text-[#0F0F0F]">Kalender</span>
         </button>
       </div>
 
-      {/* 2.5 Quick Forex Factory Economic Calendar Banner */}
-      {settings.showEconomicCalendarBanner !== false && (
-        <div 
-          onClick={() => setActiveTab('calendar')}
-          className="rounded-2xl p-3.5 bg-gradient-to-r from-[#0a1526] via-slate-900 to-[#07131e] border border-cyan-500/30 flex items-center justify-between cursor-pointer hover:border-cyan-500/50 transition-all shadow-sm group"
-        >
-          <div className="flex items-center space-x-3">
-            <div className="w-10 h-10 rounded-xl bg-cyan-500/20 border border-cyan-500/30 flex items-center justify-center text-cyan-400 group-hover:scale-105 transition-transform">
-              <CalendarDays className="w-5 h-5" />
-            </div>
-            <div>
-              <div className="text-xs font-bold text-slate-200 flex items-center space-x-1.5">
-                <span>Kalender Berita Ekonomi</span>
-              </div>
-              <div className="text-[11px] text-slate-400">
-                Pantau rilis data High-Impact (CPI, FOMC, NFP)
-              </div>
-            </div>
-          </div>
+      {/* 3. RECENT TRANSACTIONS / TRADES LIST */}
+      <div className="space-y-2.5">
+        <div className="flex items-center justify-between px-1">
+          <h2 className="text-sm font-extrabold text-[#0F0F0F] tracking-tight">
+            Recent Transactions
+          </h2>
           <button
-            onClick={(e) => { e.stopPropagation(); setActiveTab('calendar'); }}
-            className="px-3 py-1.5 rounded-xl bg-cyan-500/20 hover:bg-cyan-500/30 border border-cyan-500/30 text-cyan-300 text-xs font-bold transition-all flex items-center space-x-1"
+            onClick={() => setActiveTab('journal')}
+            className="text-xs font-semibold text-[#737373] hover:text-[#0F0F0F] transition-colors"
           >
-            <span>Buka</span>
-            <ChevronRight className="w-3.5 h-3.5" />
+            View all
           </button>
         </div>
-      )}
 
-      {/* 3. Monthly Recurring Deposit Schedule Card */}
-      {settings.depositEnabled && (
-        <div className="rounded-2xl p-3.5 bg-slate-900/80 border border-slate-800 flex items-center justify-between">
-          <div className="flex items-center space-x-2.5">
-            <div className="w-9 h-9 rounded-xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center text-cyan-400">
-              <Calendar className="w-4 h-4" />
-            </div>
-            <div>
-              <div className="text-xs font-semibold text-slate-200">
-                Deposit Rutin: {formatCurrency(settings.monthlyDeposit, settings.currency)}
-              </div>
-              <div className="text-[11px] text-slate-400">
-                Dijadwalkan setiap tanggal <span className="text-cyan-400 font-bold">{settings.monthlyDepositDay}</span>
-              </div>
-            </div>
+        {recentTrades.length === 0 ? (
+          <div className="card-light p-6 text-center space-y-2">
+            <p className="text-xs text-[#737373]">
+              {userProfile ? 'Transaksi open & closed otomatis live dari akun MT5.' : 'Masuk ke akun Anda untuk menyinkronkan data trade MT5.'}
+            </p>
+            {!userProfile && (
+              <button
+                onClick={() => setIsAuthModalOpen(true)}
+                className="px-4 py-2 rounded-2xl bg-[#0F0F0F] text-white text-xs font-bold hover:bg-black transition-all inline-flex items-center space-x-1.5 shadow-sm"
+              >
+                <LogIn className="w-4 h-4" />
+                <span>Masuk ke Akun Trader</span>
+              </button>
+            )}
           </div>
-          <button
-            onClick={() => setActiveTab('planner')}
-            className="text-xs text-cyan-400 hover:text-cyan-300 font-semibold"
-          >
-            Lihat Plan
-          </button>
-        </div>
-      )}
+        ) : (
+          <div className="space-y-2">
+            {recentTrades.map((trade) => {
+              const isDeposit = trade.outcome === 'DEPOSIT' || trade.direction === 'DEPOSIT';
+              const isWithdrawal = trade.outcome === 'WITHDRAWAL' || trade.direction === 'WITHDRAWAL';
+              const isWin = trade.outcome === 'WIN';
+              const isLoss = trade.outcome === 'LOSS';
+              const isOpen = trade.outcome === 'OPEN';
+              const icon = getPairIcon(trade.pair, trade.direction);
+              const dateLabel = getTradeDateLabel(trade.createdAt);
 
-      {/* 4. Performance Metric Stats Grid */}
+              return (
+                <div
+                  key={trade.id}
+                  onClick={() => setActiveTab('journal')}
+                  className="card-light p-3.5 flex items-center justify-between cursor-pointer hover:border-[#D4D4D0] transition-all"
+                >
+                  {/* Left: Asset Icon & Pair / Strategy */}
+                  <div className="flex items-center space-x-3">
+                    <div className="w-10 h-10 rounded-2xl bg-[#F4F4F1] border border-[#E5E5E2] flex items-center justify-center text-base shadow-sm shrink-0">
+                      <span>{icon}</span>
+                    </div>
+                    <div>
+                      <div className="flex items-center space-x-1.5">
+                        <span className="text-xs font-extrabold text-[#0F0F0F]">{trade.pair}</span>
+                        <span className={`text-[9px] font-extrabold px-1.5 py-0.2 rounded-md ${
+                          isDeposit
+                            ? 'bg-teal-50 text-teal-800 border border-teal-200'
+                            : isWithdrawal
+                              ? 'bg-purple-50 text-purple-800 border border-purple-200'
+                              : trade.direction === 'BUY' 
+                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
+                                : 'bg-rose-50 text-rose-700 border border-rose-200'
+                        }`}>
+                          {isDeposit ? 'DEPOSIT' : isWithdrawal ? 'WITHDRAW' : trade.direction}
+                        </span>
+                      </div>
+                      <div className="text-[11px] text-[#737373] truncate max-w-[140px] sm:max-w-[200px]">
+                        {trade.notes || trade.strategy || `${trade.lotSize} Lot • Live MT5`}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Right: Profit/Loss Amount & Date */}
+                  <div className="text-right shrink-0">
+                    <div className={`text-xs font-bold font-mono-num ${
+                      isDeposit || isWin 
+                        ? 'text-emerald-600' 
+                        : isWithdrawal || isLoss 
+                          ? 'text-rose-600' 
+                          : isOpen 
+                            ? 'text-blue-600' 
+                            : 'text-[#0F0F0F]'
+                    }`}>
+                      {trade.pnl >= 0 ? '+' : ''}{formatCurrency(trade.pnl, settings.currency)}
+                    </div>
+                    <div className="text-[10px] text-[#A3A3A3] font-medium">
+                      {dateLabel}
+                    </div>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
+      </div>
+
+      {/* 4. PERFORMANCE STATS GRID */}
       <div className="grid grid-cols-3 gap-2.5">
-        <div className="rounded-2xl p-3 bg-slate-900/70 border border-slate-800 text-center">
-          <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1">Win Rate</span>
-          <span className={`text-base font-extrabold font-mono-num ${winRate >= 50 ? 'text-emerald-400' : 'text-amber-400'}`}>
+        <div className="card-light p-3 text-center">
+          <span className="text-[10px] uppercase font-bold text-[#737373] block mb-1">Win Rate</span>
+          <span className={`text-base font-extrabold font-mono-num ${winRate >= 50 ? 'text-emerald-600' : 'text-amber-600'}`}>
             {winRate}%
           </span>
-          <span className="text-[10px] text-slate-500 block mt-0.5">{trades.length} Total Trade</span>
+          <span className="text-[10px] text-[#A3A3A3] block mt-0.5">
+            {trades.filter(t => t.outcome === 'WIN' || t.outcome === 'LOSS' || t.outcome === 'BE').length} Trades
+          </span>
         </div>
 
-        <div className="rounded-2xl p-3 bg-slate-900/70 border border-slate-800 text-center">
-          <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1">Target Harian</span>
-          <span className="text-sm font-bold font-mono-num text-cyan-400">
+        <div className="card-light p-3 text-center">
+          <span className="text-[10px] uppercase font-bold text-[#737373] block mb-1">Target Harian</span>
+          <span className="text-xs font-bold font-mono-num text-[#0F0F0F]">
             {formatCurrency(dailyTargetAmount, settings.currency)}
           </span>
-          <span className="text-[10px] text-slate-500 block mt-0.5">{settings.monthlyTargetPercent}% / Bulan</span>
+          <span className="text-[10px] text-[#A3A3A3] block mt-0.5">{settings.monthlyTargetPercent}% / Bln</span>
         </div>
 
-        <div className="rounded-2xl p-3 bg-slate-900/70 border border-slate-800 text-center">
-          <span className="text-[10px] uppercase font-bold text-slate-400 block mb-1">Profit Factor</span>
-          <span className={`text-base font-extrabold font-mono-num ${profitFactor >= 1.5 ? 'text-emerald-400' : 'text-slate-200'}`}>
+        <div className="card-light p-3 text-center">
+          <span className="text-[10px] uppercase font-bold text-[#737373] block mb-1">Profit Factor</span>
+          <span className={`text-base font-extrabold font-mono-num ${profitFactor >= 1.5 ? 'text-emerald-600' : 'text-[#0F0F0F]'}`}>
             {profitFactor}
           </span>
-          <span className="text-[10px] text-slate-500 block mt-0.5">RR {settings.targetRRR}:1</span>
+          <span className="text-[10px] text-[#A3A3A3] block mt-0.5">RR {settings.targetRRR}:1</span>
         </div>
       </div>
 
-      {/* 5. Equity Growth Chart */}
-      <div className="rounded-3xl p-4 bg-slate-900/80 border border-slate-800 space-y-3">
+      {/* 5. 5:00 AM COACHING HIGHLIGHT PREVIEW */}
+      {latestReport && (
+        <div 
+          onClick={() => setActiveTab('coaching' as any)}
+          className="card-light p-4 cursor-pointer hover:border-[#D4D4D0] transition-all space-y-2 border-amber-200/80 bg-gradient-to-r from-amber-50/40 to-white"
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-2 text-amber-800 text-xs font-bold">
+              <Sparkles className="w-4 h-4 text-amber-500" />
+              <span>Analisa 05:00 AM Hari Ini</span>
+            </div>
+            <span className="text-[11px] px-2 py-0.5 rounded-full bg-amber-100 text-amber-800 font-bold border border-amber-200">
+              Disiplin: {latestReport.disciplineScore}%
+            </span>
+          </div>
+          <p className="text-xs text-[#525252] line-clamp-2">
+            {latestReport.whatToMaintain[0] || latestReport.whatToImprove[0]}
+          </p>
+          <div className="flex items-center justify-end text-[11px] text-amber-700 font-semibold space-x-1">
+            <span>Buka Evaluasi Lengkap</span>
+            <ChevronRight className="w-3.5 h-3.5" />
+          </div>
+        </div>
+      )}
+
+      {/* 6. EQUITY GROWTH CHART */}
+      <div className="card-light p-4 space-y-3">
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
-            <Target className="w-4 h-4 text-emerald-400" />
-            <h3 className="text-xs font-bold text-slate-200">Kurva Pertumbuhan Akun</h3>
+            <Target className="w-4 h-4 text-emerald-600" />
+            <h3 className="text-xs font-bold text-[#0F0F0F]">Kurva Pertumbuhan Akun</h3>
           </div>
-          <span className="text-[11px] text-slate-400 font-mono-num">
-            {trades.length > 0 ? `${trades.length} Closed Trades` : 'Modal Awal'}
+          <span className="text-[11px] text-[#737373] font-mono-num font-semibold">
+            {trades.filter(t => t.outcome === 'WIN' || t.outcome === 'LOSS' || t.outcome === 'BE').length > 0 
+              ? `${trades.filter(t => t.outcome === 'WIN' || t.outcome === 'LOSS' || t.outcome === 'BE').length} Closed Trades` 
+              : 'Modal Awal'}
           </span>
         </div>
 
@@ -385,19 +509,20 @@ export const OverviewDashboard: React.FC = () => {
             <AreaChart data={chartData} margin={{ top: 5, right: 5, left: -20, bottom: 0 }}>
               <defs>
                 <linearGradient id="equityGrad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="#10b981" stopOpacity={0.4} />
+                  <stop offset="5%" stopColor="#10b981" stopOpacity={0.25} />
                   <stop offset="95%" stopColor="#10b981" stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <XAxis dataKey="name" stroke="#475569" fontSize={10} tickLine={false} />
-              <YAxis stroke="#475569" fontSize={10} tickLine={false} domain={['auto', 'auto']} />
+              <XAxis dataKey="name" stroke="#A3A3A3" fontSize={10} tickLine={false} />
+              <YAxis stroke="#A3A3A3" fontSize={10} tickLine={false} domain={['auto', 'auto']} />
               <Tooltip
                 contentStyle={{
-                  backgroundColor: '#0f172a',
-                  borderColor: '#334155',
-                  borderRadius: '12px',
+                  backgroundColor: '#FFFFFF',
+                  borderColor: '#E5E5E2',
+                  borderRadius: '14px',
                   fontSize: '12px',
-                  color: '#fff',
+                  color: '#0F0F0F',
+                  boxShadow: '0 8px 24px rgba(0,0,0,0.08)'
                 }}
                 formatter={(value: any) => [formatCurrency(Number(value), settings.currency), 'Balance']}
               />
@@ -412,118 +537,6 @@ export const OverviewDashboard: React.FC = () => {
             </AreaChart>
           </ResponsiveContainer>
         </div>
-      </div>
-
-      {/* 6. 5:00 AM Coaching Highlight Preview */}
-      {latestReport && (
-        <div 
-          onClick={() => setActiveTab('coaching')}
-          className="rounded-2xl p-4 bg-gradient-to-r from-amber-950/30 to-slate-900 border border-amber-500/30 cursor-pointer hover:border-amber-500/50 transition-all space-y-2"
-        >
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-2 text-amber-400 text-xs font-bold">
-              <Sparkles className="w-4 h-4" />
-              <span>Analisa 05:00 AM Hari Ini</span>
-            </div>
-            <span className="text-[11px] px-2 py-0.5 rounded-full bg-amber-500/20 text-amber-300 font-bold">
-              Disiplin: {latestReport.disciplineScore}%
-            </span>
-          </div>
-          <p className="text-xs text-slate-300 line-clamp-2">
-            {latestReport.whatToMaintain[0] || latestReport.whatToImprove[0]}
-          </p>
-          <div className="flex items-center justify-end text-[11px] text-amber-400 font-semibold space-x-1">
-            <span>Buka Evaluasi Lengkap</span>
-            <ChevronRight className="w-3.5 h-3.5" />
-          </div>
-        </div>
-      )}
-
-      {/* 7. Recent Trade Entries */}
-      <div className="space-y-3">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center space-x-2">
-            <BookOpen className="w-4 h-4 text-emerald-400" />
-            <h3 className="text-xs font-bold text-slate-200">Riwayat Entry Terakhir</h3>
-          </div>
-          <button
-            onClick={() => setActiveTab('journal')}
-            className="text-xs text-emerald-400 hover:text-emerald-300 font-semibold flex items-center space-x-0.5"
-          >
-            <span>Semua Jurnal</span>
-            <ChevronRight className="w-3.5 h-3.5" />
-          </button>
-        </div>
-
-        {recentTrades.length === 0 ? (
-          <div className="rounded-2xl p-6 bg-slate-900/40 border border-slate-800 text-center space-y-2.5">
-            <div className="text-slate-400 text-xs">
-              {userProfile ? 'Belum ada trade yang dicatat.' : 'Mode Tamu: Masuk ke akun Anda untuk menyinkronkan data trade live MT5.'}
-            </div>
-            {userProfile ? (
-              <button
-                onClick={() => setIsNewTradeModalOpen(true)}
-                className="px-4 py-2 rounded-xl bg-emerald-500 text-slate-950 font-bold text-xs hover:bg-emerald-400 transition-all inline-flex items-center space-x-1.5"
-              >
-                <ArrowUpRight className="w-3.5 h-3.5" />
-                <span>Catat Entry Pertama</span>
-              </button>
-            ) : (
-              <button
-                onClick={() => setIsAuthModalOpen(true)}
-                className="px-4 py-2 rounded-xl bg-gradient-to-r from-emerald-500 to-cyan-500 text-slate-950 font-bold text-xs hover:from-emerald-400 hover:to-cyan-400 transition-all inline-flex items-center space-x-1.5 shadow-glow-emerald"
-              >
-                <ArrowUpRight className="w-3.5 h-3.5" />
-                <span>Masuk ke Akun Trader</span>
-              </button>
-            )}
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {recentTrades.map((trade) => {
-              const isWin = trade.outcome === 'WIN';
-              const isLoss = trade.outcome === 'LOSS';
-              return (
-                <div
-                  key={trade.id}
-                  className="rounded-2xl p-3 bg-slate-900/80 border border-slate-800/80 flex items-center justify-between"
-                >
-                  <div className="flex items-center space-x-3">
-                    <div className={`w-8 h-8 rounded-xl flex items-center justify-center font-bold text-xs ${
-                      trade.direction === 'BUY' 
-                        ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' 
-                        : 'bg-rose-500/20 text-rose-400 border border-rose-500/30'
-                    }`}>
-                      {trade.direction}
-                    </div>
-                    <div>
-                      <div className="flex items-center space-x-1.5">
-                        <span className="text-xs font-bold text-white">{trade.pair}</span>
-                        <span className="text-[10px] text-slate-400 font-mono-num">{trade.lotSize} Lot</span>
-                      </div>
-                      <div className="text-[10px] text-slate-400">
-                        {trade.strategy || 'Standard Setup'}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="text-right">
-                    <div className={`text-xs font-bold font-mono-num ${
-                      isWin ? 'text-emerald-400' : isLoss ? 'text-rose-400' : 'text-slate-400'
-                    }`}>
-                      {trade.pnl >= 0 ? '+' : ''}{formatCurrency(trade.pnl, settings.currency)}
-                    </div>
-                    <div className={`text-[10px] font-semibold ${
-                      isWin ? 'text-emerald-500' : isLoss ? 'text-rose-500' : 'text-slate-400'
-                    }`}>
-                      {trade.outcome}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
       </div>
     </div>
   );
