@@ -21,6 +21,7 @@ import {
 import { EconomicEvent, NewsImpact } from '../../types/journal';
 import { CustomSelect } from '../ui/CustomSelect';
 import { motion, AnimatePresence } from 'framer-motion';
+import { NewsDetailModal } from './NewsDetailModal';
 
 const CURRENCIES = ['ALL', 'USD', 'EUR', 'GBP', 'JPY', 'AUD', 'CAD', 'CHF', 'NZD', 'CNY'];
 
@@ -43,6 +44,9 @@ export const EconomicCalendarView: React.FC = () => {
   const [selectedImpact, setSelectedImpact] = useState<string>('ALL');
   const [selectedDateFilter, setSelectedDateFilter] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
+
+  // Selected news event for detail modal
+  const [selectedNewsEvent, setSelectedNewsEvent] = useState<EconomicEvent | null>(null);
 
   // Dynamic Date Filter Options derived from current events
   const dateFilterOptions = useMemo(() => {
@@ -238,14 +242,15 @@ export const EconomicCalendarView: React.FC = () => {
     return (
       <div
         key={event.id}
-        className={`card-light p-3.5 transition-all ${
+        onClick={() => setSelectedNewsEvent(event)}
+        className={`card-light p-3.5 transition-all cursor-pointer hover:shadow-md select-none group relative ${
           isFinished 
             ? 'opacity-80 bg-[#FAFAF8] border-[#E5E5E2]' 
             : event.isHighImpact
-            ? 'border-rose-200 hover:border-rose-300'
+            ? 'border-rose-200 hover:border-rose-400 bg-gradient-to-br from-rose-50/20 to-white'
             : event.impact === 'Medium'
-            ? 'border-amber-200 hover:border-amber-300'
-            : 'hover:border-[#D4D4D0]'
+            ? 'border-amber-200 hover:border-amber-400 bg-gradient-to-br from-amber-50/20 to-white'
+            : 'hover:border-[#0F0F0F]'
         }`}
       >
         {/* Top Row: Currency, Time, Impact Badge & Alarm Button */}
@@ -268,8 +273,11 @@ export const EconomicCalendarView: React.FC = () => {
             {!isFinished && (
               <button
                 type="button"
-                onClick={() => toggleAlarm(event)}
-                className={`p-1.5 rounded-xl border text-xs flex items-center space-x-1 font-bold transition-all ${
+                onClick={(e) => {
+                  e.stopPropagation();
+                  toggleAlarm(event);
+                }}
+                className={`p-1.5 rounded-xl border text-xs flex items-center space-x-1 font-bold transition-all z-10 ${
                   hasAlarm
                     ? 'bg-[#0F0F0F] text-white border-[#0F0F0F] shadow-sm'
                     : 'bg-white text-[#737373] border-[#E5E5E2] hover:text-[#0F0F0F] hover:border-[#D4D4D0]'
@@ -293,8 +301,11 @@ export const EconomicCalendarView: React.FC = () => {
         </div>
 
         {/* Event Title */}
-        <div className="text-xs font-bold text-[#0F0F0F] mb-2 leading-snug">
-          {event.title}
+        <div className="text-xs font-extrabold text-[#0F0F0F] mb-2 leading-snug group-hover:text-emerald-700 transition-colors flex items-start justify-between">
+          <span>{event.title}</span>
+          <span className="text-[10px] font-bold text-[#737373] opacity-0 group-hover:opacity-100 transition-opacity ml-1.5 shrink-0">
+            Detail →
+          </span>
         </div>
 
         {/* Bottom Metric Row: Actual, Forecast, Previous & Status */}
@@ -622,6 +633,19 @@ export const EconomicCalendarView: React.FC = () => {
           )}
         </div>
       )}
+
+      {/* News Detail Modal */}
+      <AnimatePresence>
+        {selectedNewsEvent && (
+          <NewsDetailModal
+            event={selectedNewsEvent}
+            onClose={() => setSelectedNewsEvent(null)}
+            hasAlarm={Boolean(scheduledAlarms[selectedNewsEvent.id])}
+            onToggleAlarm={toggleAlarm}
+            allEvents={events}
+          />
+        )}
+      </AnimatePresence>
     </div>
   );
 };

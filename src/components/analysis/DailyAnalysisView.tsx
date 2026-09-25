@@ -27,10 +27,10 @@ export const DailyAnalysisView: React.FC = () => {
         <div>
           <h2 className="text-base font-extrabold text-[#0F0F0F] flex items-center space-x-2">
             <Sparkles className="w-5 h-5 text-amber-600" />
-            <span>05:00 AM Daily Coaching Center</span>
+            <span>05:00 AM {settings.language === 'en' ? 'Daily Coaching Center' : 'Daily Coaching Center'}</span>
           </h2>
           <p className="text-xs text-[#737373]">
-            Analisa otomatis evaluasi trading harian & rekomendasi perbaikan
+            {settings.language === 'en' ? 'Automated daily trading evaluation & recommendations' : settings.language === 'ms' ? 'Penilaian dagangan automatik & cadangan harian' : 'Analisa otomatis evaluasi trading harian & rekomendasi perbaikan'}
           </p>
         </div>
 
@@ -39,22 +39,22 @@ export const DailyAnalysisView: React.FC = () => {
           className="px-3 py-1.5 rounded-xl bg-[#0F0F0F] hover:bg-black text-white font-bold text-xs transition-all flex items-center space-x-1 shadow-sm"
         >
           <RotateCcw className="w-3.5 h-3.5" />
-          <span>Analisa</span>
+          <span>{settings.language === 'en' ? 'Analyze' : 'Analisa'}</span>
         </button>
       </div>
 
       {!latestReport ? (
         <div className="card-light p-8 text-center space-y-3">
           <Clock className="w-10 h-10 text-amber-500 mx-auto animate-bounce" />
-          <h3 className="text-sm font-extrabold text-[#0F0F0F]">Belum Ada Analisa 05:00 AM</h3>
+          <h3 className="text-sm font-extrabold text-[#0F0F0F]">{settings.language === 'en' ? 'No 05:00 AM Analysis Yet' : 'Belum Ada Analisa 05:00 AM'}</h3>
           <p className="text-xs text-[#737373] max-w-xs mx-auto">
-            Sistem otomatis mengevaluasi jurnal setiap jam 5 pagi, atau Anda dapat menjalankan analisa sekarang.
+            {settings.language === 'en' ? 'The system automatically evaluates journals at 5 AM, or you can run analysis now.' : 'Sistem otomatis mengevaluasi jurnal setiap jam 5 pagi, atau Anda dapat menjalankan analisa sekarang.'}
           </p>
           <button
             onClick={runDailyAnalysisManual}
             className="px-4 py-2.5 rounded-2xl bg-[#0F0F0F] text-white font-bold text-xs hover:bg-black transition-all shadow-sm"
           >
-            Jalankan Analisa 05:00 AM Sekarang
+            {settings.language === 'en' ? 'Run 05:00 AM Analysis Now' : 'Jalankan Analisa 05:00 AM Sekarang'}
           </button>
         </div>
       ) : (
@@ -68,17 +68,17 @@ export const DailyAnalysisView: React.FC = () => {
                 </div>
                 <div>
                   <span className="text-xs font-bold text-white block">
-                    Laporan Harian ({latestReport.date})
+                    {settings.language === 'en' ? 'Daily Report' : 'Laporan Harian'} ({latestReport.date})
                   </span>
                   <span className="text-[10px] text-[#A3A3A3]">
-                    Evaluasi otomatis 05:00 AM
+                    {settings.language === 'en' ? '05:00 AM Auto Evaluation' : 'Evaluasi otomatis 05:00 AM'}
                   </span>
                 </div>
               </div>
 
               {/* Discipline Score Badge */}
               <div className="text-right">
-                <span className="text-[10px] uppercase font-bold text-[#A3A3A3] block">Disiplin Score</span>
+                <span className="text-[10px] uppercase font-bold text-[#A3A3A3] block">{settings.language === 'en' ? 'Discipline Score' : 'Disiplin Score'}</span>
                 <span className={`text-xl font-black font-mono-num ${
                   latestReport.disciplineScore >= 80 
                     ? 'text-emerald-400' 
@@ -94,7 +94,7 @@ export const DailyAnalysisView: React.FC = () => {
             {/* Metrics Breakdown Grid */}
             <div className="grid grid-cols-4 gap-2 pt-3 border-t border-neutral-800 text-center text-xs">
               <div>
-                <span className="text-[10px] text-[#A3A3A3] block">Total Trade</span>
+                <span className="text-[10px] text-[#A3A3A3] block">{settings.language === 'en' ? 'Total Trades' : 'Total Trade'}</span>
                 <span className="font-extrabold text-white font-mono-num">{latestReport.totalTrades}</span>
               </div>
               <div>
@@ -118,13 +118,13 @@ export const DailyAnalysisView: React.FC = () => {
           <div className="card-light p-4 border-emerald-300 bg-emerald-50/40 space-y-2">
             <div className="flex items-center space-x-2 text-emerald-800 text-xs font-extrabold">
               <Zap className="w-4 h-4 text-emerald-600" />
-              <span>Arahan Lot & Tindakan Hari Ini</span>
+              <span>{settings.language === 'en' ? "Today's Action & Lot Advisory" : "Arahan Lot & Tindakan Hari Ini"}</span>
             </div>
             <p className="text-xs text-[#0F0F0F] font-medium">
               {latestReport.lotAdvisory.message}
             </p>
             <div className="text-[11px] text-emerald-700 font-mono-num font-extrabold">
-              Target Lot: {latestReport.lotAdvisory.recommendedLotToday} Lot
+              {settings.language === 'en' ? 'Target Lot' : 'Target Lot'}: {latestReport.lotAdvisory.recommendedLotToday} Lot
             </div>
           </div>
 
@@ -132,7 +132,7 @@ export const DailyAnalysisView: React.FC = () => {
           <div className="card-light p-4 space-y-3">
             <div className="flex items-center space-x-2 text-emerald-700 text-xs font-extrabold">
               <CheckCircle2 className="w-4 h-4 text-emerald-600" />
-              <span>APA YANG HARUS DIPERTAHANKAN</span>
+              <span>{settings.language === 'en' ? 'WHAT TO MAINTAIN' : settings.language === 'ms' ? 'APA YANG PERLU DIKEKALKAN' : 'APA YANG HARUS DIPERTAHANKAN'}</span>
             </div>
 
             <div className="space-y-2">
@@ -152,7 +152,7 @@ export const DailyAnalysisView: React.FC = () => {
           <div className="card-light p-4 space-y-3">
             <div className="flex items-center space-x-2 text-rose-700 text-xs font-extrabold">
               <AlertTriangle className="w-4 h-4 text-rose-600" />
-              <span>APA YANG HARUS DIIMPROVE</span>
+              <span>{settings.language === 'en' ? 'WHAT TO IMPROVE' : settings.language === 'ms' ? 'APA YANG PERLU DITINGKATKAN' : 'APA YANG HARUS DIIMPROVE'}</span>
             </div>
 
             <div className="space-y-2">
@@ -173,7 +173,7 @@ export const DailyAnalysisView: React.FC = () => {
             <div className="space-y-2 pt-2">
               <h3 className="text-xs font-bold text-[#0F0F0F] flex items-center space-x-1.5 px-1">
                 <Calendar className="w-4 h-4 text-[#737373]" />
-                <span>Arsip Laporan Analisa Sebelumnya</span>
+                <span>{settings.language === 'en' ? 'Historical Analysis Archive' : 'Arsip Laporan Analisa Sebelumnya'}</span>
               </h3>
 
               <div className="space-y-2 max-h-56 overflow-y-auto pr-1">

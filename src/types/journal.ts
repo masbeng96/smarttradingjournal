@@ -49,6 +49,10 @@ export interface PlanSettings {
   notifyOnTradeClosed?: boolean;        // Notifikasi saat trade ditutup
   notifyOnStopLossHit?: boolean;        // Notifikasi saat level Stop Loss tersentuh
   notifyOnTakeProfitHit?: boolean;      // Notifikasi saat level Take Profit tersentuh
+
+  // App Settings
+  theme?: 'light' | 'dark';             // Tema aplikasi
+  language?: 'id' | 'en' | 'ms';        // Bahasa antarmuka
 }
 
 export interface TradeEntry {
@@ -186,6 +190,10 @@ export interface MT5AccountData {
   margin: number;
   floating_pnl: number;
   initial_deposit?: number;
+  broker?: string;
+  server?: string;
+  clientName?: string;
+  tradeMode?: number;
   lastUpdated?: string;
   isConnected?: boolean;
   error?: string;

@@ -627,6 +627,15 @@ export const JournalProvider: React.FC<{ children: React.ReactNode }> = ({ child
     return () => clearInterval(interval);
   }, [trades, currentEquity, settings, coachingReports, firebaseConfig, userProfile]);
 
+  // Handle Theme
+  useEffect(() => {
+    if (settings.theme === 'dark') {
+      document.documentElement.classList.add('dark-theme');
+    } else {
+      document.documentElement.classList.remove('dark-theme');
+    }
+  }, [settings.theme]);
+
   // Manual Trigger for 5:00 AM Analysis
   const runDailyAnalysisManual = () => {
     const todayStr = new Date().toISOString().split('T')[0];

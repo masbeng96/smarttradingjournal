@@ -5,9 +5,8 @@ export const CLOUD_BACKEND_ORIGIN = 'https://smarttrading-app-1019478115925.asia
 
 export const MT5_CONFIG = {
   DIRECT_BASE: 'http://202.155.94.173/api/account/',
-  PROXY_BASE: 'https://corsproxy.io/?http://202.155.94.173/api/account/',
-  CLOUD_PROXY_BASE: `${CLOUD_BACKEND_ORIGIN}/api/mt5/account/`,
-  RELATIVE_PROXY_BASE: '/api/mt5/account/',
+  DIRECT_PORT_8080: 'http://202.155.94.173:8080/api/account/',
+  RELATIVE_PROXY_BASE: '/api/account/',
   API_KEY: 'TokenRahasia2026',
   POLL_INTERVAL_MS: 5000,
 };
@@ -32,11 +31,9 @@ export function getAssignedMT5AccountId(email?: string | null): (1 | 2) | null {
 export function getDynamicMT5BaseUrl(): string {
   const isNative = typeof Capacitor !== 'undefined' && Capacitor.isNativePlatform();
   if (isNative) {
-    // Native Android APK: direct HTTP URL
     return 'http://202.155.94.173/api/account/';
   }
-  // Web Preview: CORS proxy URL
-  return 'https://corsproxy.io/?http://202.155.94.173/api/account/';
+  return '/api/account/';
 }
 
 /**
@@ -49,13 +46,12 @@ export async function fetchSingleMT5Account(accountId: 1 | 2 = 1, parentSignal?:
   const candidateUrls = isNative
     ? [
         `http://202.155.94.173/api/account/${accountId}`,
-        `https://corsproxy.io/?http://202.155.94.173/api/account/${accountId}`,
+        `http://202.155.94.173:8080/api/account/${accountId}`,
       ]
     : [
         `/api/account/${accountId}`,
-        `https://corsproxy.io/?http://202.155.94.173/api/account/${accountId}`,
         `http://202.155.94.173/api/account/${accountId}`,
-        `${CLOUD_BACKEND_ORIGIN}/api/mt5/account/${accountId}`,
+        `http://202.155.94.173:8080/api/account/${accountId}`,
       ];
 
   const headers = {
@@ -92,7 +88,7 @@ export async function fetchSingleMT5Account(accountId: 1 | 2 = 1, parentSignal?:
 
       const data = await response.json();
       
-      if (data.isConnected === false) {
+      if (data.error) {
         return {
           akun: data.akun || `Akun ${accountId}`,
           balance: Number(data.balance ?? data.saldo ?? 0),
@@ -100,7 +96,7 @@ export async function fetchSingleMT5Account(accountId: 1 | 2 = 1, parentSignal?:
           margin: Number(data.margin ?? 0),
           floating_pnl: Number(data.floating_pnl ?? data.floatingPnl ?? data.profit ?? 0),
           isConnected: false,
-          error: data.error || `Server MT5 mengembalikan isConnected=false (${endpoint})`,
+          error: data.error,
         };
       }
 
@@ -111,6 +107,10 @@ export async function fetchSingleMT5Account(accountId: 1 | 2 = 1, parentSignal?:
         margin: Number(data.margin ?? 0),
         floating_pnl: Number(data.floating_pnl ?? data.floatingPnl ?? data.profit ?? 0),
         initial_deposit: data.initial_deposit !== undefined && data.initial_deposit !== null ? Number(data.initial_deposit) : undefined,
+        broker: data.broker,
+        server: data.server,
+        clientName: data.client_name,
+        tradeMode: data.trade_mode,
         lastUpdated: new Date().toLocaleTimeString('id-ID'),
         isConnected: true,
         deals: Array.isArray(data.deals) ? data.deals : [],

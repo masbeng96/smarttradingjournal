@@ -118,3 +118,20 @@ body {
 .safe-top {
   padding-top: env(safe-area-inset-top, 0.75rem);
 }
+
+/* 
+ * Dark Theme via CSS Filter Trick 
+ * Inverts lightness but preserves hue (Green stays Green, Red stays Red)
+ */
+html.dark-theme {
+  filter: invert(1) hue-rotate(180deg);
+  background-color: #0F0F0F; /* Ensure background is inverted to dark visually */
+}
+
+/* Restore images, videos, and avatars back to original */
+html.dark-theme img,
+html.dark-theme video,
+html.dark-theme svg.no-invert,
+html.dark-theme .no-invert {
+  filter: invert(1) hue-rotate(180deg);
+}

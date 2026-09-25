@@ -65,7 +65,7 @@ export const RiskLotManagerView: React.FC = () => {
           <span>Risk Management & Lot Compounding</span>
         </h2>
         <p className="text-xs text-[#737373]">
-          Kalkulasi otomatis ukuran lot per trade & tangga milestone lot
+          {settings.language === 'en' ? 'Automated lot size calculation & milestone ladder' : settings.language === 'ms' ? 'Pengiraan lot automatik & tangga peristiwa penting' : 'Kalkulasi otomatis ukuran lot per trade & tangga milestone lot'}
         </p>
       </div>
 
@@ -73,10 +73,10 @@ export const RiskLotManagerView: React.FC = () => {
       <div className="card-dark-hero p-5 space-y-3">
         <div className="flex items-center justify-between">
           <span className="text-xs font-extrabold uppercase tracking-wider text-[#A3A3A3]">
-            Status Lot Aktif (Tier {ladder.currentTier.tierLevel})
+            {settings.language === 'en' ? 'Active Lot Status' : settings.language === 'ms' ? 'Status Lot Aktif' : 'Status Lot Aktif'} (Tier {ladder.currentTier.tierLevel})
           </span>
           <span className="text-[11px] px-2.5 py-0.5 rounded-full bg-neutral-900 text-neutral-300 font-semibold border border-neutral-800">
-            Modal: {formatCurrency(currentEquity, settings.currency)}
+            {settings.language === 'en' ? 'Equity' : 'Modal'}: {formatCurrency(currentEquity, settings.currency)}
           </span>
         </div>
 
@@ -86,7 +86,7 @@ export const RiskLotManagerView: React.FC = () => {
               {ladder.currentTier.recommendedLot} Lot
             </div>
             <span className="text-xs text-[#A3A3A3]">
-              Maksimum Risiko: {formatCurrency(ladder.currentTier.riskAmount, settings.currency)} ({settings.riskPerTradePercent}%)
+              {settings.language === 'en' ? 'Max Risk' : 'Maksimum Risiko'}: {formatCurrency(ladder.currentTier.riskAmount, settings.currency)} ({settings.riskPerTradePercent}%)
             </span>
           </div>
 
@@ -108,13 +108,13 @@ export const RiskLotManagerView: React.FC = () => {
         <div className="flex items-center justify-between border-b border-[#E5E5E2] pb-2.5">
           <span className="text-xs font-extrabold text-[#0F0F0F] flex items-center space-x-1.5">
             <Sliders className="w-4 h-4 text-[#0F0F0F]" />
-            <span>Aturan Manajemen Risiko</span>
+            <span>{settings.language === 'en' ? 'Risk Management Rules' : settings.language === 'ms' ? 'Peraturan Pengurusan Risiko' : 'Aturan Manajemen Risiko'}</span>
           </span>
           <button
             onClick={handleSaveRiskRules}
             className="px-3 py-1.5 rounded-xl bg-[#0F0F0F] hover:bg-black text-white font-bold text-xs transition-all shadow-sm"
           >
-            Simpan Aturan
+            {settings.language === 'en' ? 'Save Rules' : 'Simpan Aturan'}
           </button>
         </div>
 
@@ -133,7 +133,7 @@ export const RiskLotManagerView: React.FC = () => {
 
           {/* Max Daily Loss % */}
           <div className="space-y-1">
-            <label className="text-[#737373] text-[11px] block font-medium">Maks. Daily Loss (%)</label>
+            <label className="text-[#737373] text-[11px] block font-medium">{settings.language === 'en' ? 'Max Daily Loss (%)' : 'Maks. Daily Loss (%)'}</label>
             <input
               type="number"
               step="0.5"
@@ -145,7 +145,7 @@ export const RiskLotManagerView: React.FC = () => {
 
           {/* Target RRR */}
           <div className="space-y-1">
-            <label className="text-[#737373] text-[11px] block font-medium">Target RR (1:X)</label>
+            <label className="text-[#737373] text-[11px] block font-medium">{settings.language === 'en' ? 'Target RR (1:X)' : 'Target RR (1:X)'}</label>
             <input
               type="number"
               step="0.5"
@@ -188,7 +188,7 @@ export const RiskLotManagerView: React.FC = () => {
       <div className="space-y-2">
         <h3 className="text-xs font-extrabold text-[#0F0F0F] flex items-center space-x-1.5 px-1">
           <Zap className="w-4 h-4 text-[#0F0F0F]" />
-          <span>Tangga Milestone Kenaikan & Penurunan Lot</span>
+          <span>{settings.language === 'en' ? 'Lot Increase & Decrease Milestone Ladder' : settings.language === 'ms' ? 'Tangga Peningkatan & Penurunan Lot' : 'Tangga Milestone Kenaikan & Penurunan Lot'}</span>
         </h3>
 
         <div className="space-y-2 max-h-72 overflow-y-auto pr-1">
@@ -244,7 +244,7 @@ export const RiskLotManagerView: React.FC = () => {
       <div className="card-light p-4 space-y-3">
         <div className="flex items-center space-x-2">
           <Calculator className="w-4 h-4 text-[#0F0F0F]" />
-          <h3 className="text-xs font-bold text-[#0F0F0F]">Kalkulator Lot Instan (Sandbox)</h3>
+          <h3 className="text-xs font-bold text-[#0F0F0F]">{settings.language === 'en' ? 'Instant Lot Calculator (Sandbox)' : 'Kalkulator Lot Instan (Sandbox)'}</h3>
         </div>
 
         <div className="grid grid-cols-3 gap-2 text-xs">
@@ -284,19 +284,19 @@ export const RiskLotManagerView: React.FC = () => {
         {/* Live Calculation Output */}
         <div className="rounded-2xl p-3.5 bg-[#F7F7F5] border border-[#E5E5E2] flex items-center justify-between">
           <div>
-            <span className="text-[10px] text-[#737373] block font-medium">Lot Aman Rekomendasi</span>
+            <span className="text-[10px] text-[#737373] block font-medium">{settings.language === 'en' ? 'Recommended Safe Lot' : 'Lot Aman Rekomendasi'}</span>
             <span className="text-xl font-black font-mono-num text-[#0F0F0F]">
               {liveCalculation.recommendedLot} Lot
             </span>
           </div>
 
           <div className="text-right text-xs">
-            <span className="text-[10px] text-[#737373] block font-medium">Maksimal Lot Toleransi:</span>
+            <span className="text-[10px] text-[#737373] block font-medium">{settings.language === 'en' ? 'Max Tolerance Lot:' : 'Maksimal Lot Toleransi:'}</span>
             <span className="font-bold text-rose-600 font-mono-num">
               {liveCalculation.maxSafeLot} Lot
             </span>
             <span className="text-[10px] text-[#A3A3A3] block">
-              Risiko: {formatCurrency(liveCalculation.riskAmount, settings.currency)}
+              {settings.language === 'en' ? 'Risk' : 'Risiko'}: {formatCurrency(liveCalculation.riskAmount, settings.currency)}
             </span>
           </div>
         </div>

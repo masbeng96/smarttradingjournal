@@ -23,14 +23,22 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 
 export const CompoundPlannerView: React.FC = () => {
-  const { settings, updateSettings } = useJournal();
+  const { settings, updateSettings, mt5Data } = useJournal();
 
   // Local state for interactive editing before saving
-  const [initialCap, setInitialCap] = useState(settings.initialCapital);
+  const [initialCap, setInitialCap] = useState(mt5Data?.initial_deposit || settings.initialCapital);
   const [monthlyDep, setMonthlyDep] = useState(settings.monthlyDeposit);
   const [depDay, setDepDay] = useState(settings.monthlyDepositDay);
   const [depositActive, setDepositActive] = useState(settings.depositEnabled);
   const [targetPct, setTargetPct] = useState(settings.monthlyTargetPercent);
+  
+  // Sync initialCap with mt5Data when it loads
+  React.useEffect(() => {
+    if (mt5Data?.initial_deposit && mt5Data.initial_deposit !== initialCap) {
+      setInitialCap(mt5Data.initial_deposit);
+      updateSettings({ initialCapital: mt5Data.initial_deposit });
+    }
+  }, [mt5Data?.initial_deposit]);
   
   // Horizon in Years & Months
   const initialTotalMonths = settings.projectionMonths || 12;
@@ -130,7 +138,7 @@ export const CompoundPlannerView: React.FC = () => {
           <span>Compound Target Planner</span>
         </h2>
         <p className="text-xs text-[#737373]">
-          Simulasi target compound & kontribusi deposit bulanan
+          {settings.language === 'en' ? 'Compound target & monthly deposit simulation' : settings.language === 'ms' ? 'Simulasi sasaran kompaun & deposit bulanan' : 'Simulasi target compound & kontribusi deposit bulanan'}
         </p>
       </div>
 
@@ -147,10 +155,10 @@ export const CompoundPlannerView: React.FC = () => {
             </div>
             <div>
               <span className="text-xs font-extrabold text-[#0F0F0F] block">
-                Parameter Compound & Deposit
+                {settings.language === 'en' ? 'Compound & Deposit Parameters' : settings.language === 'ms' ? 'Parameter Kompaun & Deposit' : 'Parameter Compound & Deposit'}
               </span>
               <span className="text-[10px] text-[#737373] font-medium">
-                {formatCurrency(initialCap, settings.currency)} • {targetPct}%/bln • {yearsInput} Thn {monthsInput > 0 ? `${monthsInput} Bln` : ''}
+                {formatCurrency(initialCap, settings.currency)} • {targetPct}%/{settings.language === 'en' ? 'mo' : 'bln'} • {yearsInput} {settings.language === 'en' ? 'Yrs' : 'Thn'} {monthsInput > 0 ? `${monthsInput} ${settings.language === 'en' ? 'Mo' : 'Bln'}` : ''}
               </span>
             </div>
           </div>
@@ -190,15 +198,16 @@ export const CompoundPlannerView: React.FC = () => {
                   <input
                     type="number"
                     value={initialCap}
+                    disabled={!!mt5Data?.initial_deposit}
                     onChange={(e) => setInitialCap(Number(e.target.value))}
                     onBlur={handleApplySettings}
-                    className="w-full bg-[#F7F7F5] border border-[#E5E5E2] rounded-xl px-3 py-2 text-xs font-mono-num text-[#0F0F0F] font-bold focus:outline-none focus:border-[#0F0F0F]"
+                    className="w-full bg-[#F7F7F5] border border-[#E5E5E2] rounded-xl px-3 py-2 text-xs font-mono-num text-[#0F0F0F] font-bold focus:outline-none focus:border-[#0F0F0F] disabled:opacity-50"
                   />
                 </div>
 
                 {/* Target Profit Bulanan (Monthly Interest Rate %) */}
                 <div className="space-y-1">
-                  <label className="text-[#737373] text-[11px] block font-medium">Target Profit (%) / Bulan</label>
+                  <label className="text-[#737373] text-[11px] block font-medium">{settings.language === 'en' ? 'Monthly Target Profit (%)' : settings.language === 'ms' ? 'Sasaran Keuntungan (%) / Bulan' : 'Target Profit (%) / Bulan'}</label>
                   <input
                     type="number"
                     step="0.5"
@@ -212,7 +221,7 @@ export const CompoundPlannerView: React.FC = () => {
                 {/* Monthly Recurring Deposit Nominal */}
                 <div className="space-y-1">
                   <div className="flex items-center justify-between">
-                    <label className="text-[#737373] text-[11px] font-medium">Deposit Bulanan</label>
+                    <label className="text-[#737373] text-[11px] font-medium">{settings.language === 'en' ? 'Monthly Deposit' : settings.language === 'ms' ? 'Deposit Bulanan' : 'Deposit Bulanan'}</label>
                     <input
                       type="checkbox"
                       checked={depositActive}
@@ -255,7 +264,7 @@ export const CompoundPlannerView: React.FC = () => {
 
                 {/* 2 INPUT FIELDS: TAHUN & BULAN */}
                 <div className="space-y-1">
-                  <label className="text-[#737373] text-[11px] block font-medium">Jangka Waktu (Tahun)</label>
+                  <label className="text-[#737373] text-[11px] block font-medium">{settings.language === 'en' ? 'Duration (Years)' : settings.language === 'ms' ? 'Tempoh (Tahun)' : 'Jangka Waktu (Tahun)'}</label>
                   <input
                     type="number"
                     min="0"
@@ -297,7 +306,7 @@ export const CompoundPlannerView: React.FC = () => {
                 }}
                 className="w-full py-2.5 rounded-xl bg-[#0F0F0F] text-white font-bold text-xs shadow-sm hover:bg-black transition-all"
               >
-                Terapkan & Simpan Parameter
+                {settings.language === 'en' ? 'Apply & Save Parameters' : settings.language === 'ms' ? 'Guna & Simpan Parameter' : 'Terapkan & Simpan Parameter'}
               </button>
             </motion.div>
           )}
@@ -373,8 +382,8 @@ export const CompoundPlannerView: React.FC = () => {
       {/* Projection Chart */}
       <div className="card-light p-4 space-y-3">
         <div className="flex items-center justify-between">
-          <h3 className="text-xs font-bold text-[#0F0F0F]">Grafik Akumulasi Modal & Profit</h3>
-          <span className="text-[10px] text-[#737373] font-semibold">{totalHorizonMonths} Bulan ke Depan</span>
+          <h3 className="text-xs font-bold text-[#0F0F0F]">{settings.language === 'en' ? 'Capital & Profit Accumulation Chart' : settings.language === 'ms' ? 'Carta Pengumpulan Modal & Keuntungan' : 'Grafik Akumulasi Modal & Profit'}</h3>
+          <span className="text-[10px] text-[#737373] font-semibold">{totalHorizonMonths} {settings.language === 'en' ? 'Months Ahead' : 'Bulan ke Depan'}</span>
         </div>
 
         <div className="h-48 w-full">

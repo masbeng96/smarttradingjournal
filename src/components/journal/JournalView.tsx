@@ -8,8 +8,13 @@ import {
   AlertTriangle, 
   Search, 
   Image as ImageIcon,
-  RotateCcw
+  RotateCcw,
+  ChevronDown,
+  Info,
+  ExternalLink
 } from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { getTranslation } from '../../lib/translations';
 
 export const JournalView: React.FC = () => {
   const { 
@@ -25,8 +30,24 @@ export const JournalView: React.FC = () => {
 
   const [filterPair, setFilterPair] = useState<string>('ALL');
   const [filterOutcome, setFilterOutcome] = useState<string>('ALL');
+  const [dateFilter, setDateFilter] = useState<string>('ALL');
+  const [customStartDate, setCustomStartDate] = useState<string>('');
+  const [customEndDate, setCustomEndDate] = useState<string>('');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [activeImagePreview, setActiveImagePreview] = useState<string | null>(null);
+  const [expandedTradeIds, setExpandedTradeIds] = useState<Set<string>>(new Set());
+
+  const toggleExpand = (id: string) => {
+    setExpandedTradeIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(id)) {
+        next.delete(id);
+      } else {
+        next.add(id);
+      }
+      return next;
+    });
+  };
 
   // Filtered trades
   const filteredTrades = trades.filter((trade) => {
@@ -37,8 +58,35 @@ export const JournalView: React.FC = () => {
       const matchPair = trade.pair.toLowerCase().includes(q);
       const matchStrategy = trade.strategy?.toLowerCase().includes(q);
       const matchNotes = trade.notes?.toLowerCase().includes(q);
-      return matchPair || matchStrategy || matchNotes;
+      if (!matchPair && !matchStrategy && !matchNotes) return false;
     }
+
+    if (dateFilter !== 'ALL') {
+      const tradeDate = new Date(trade.date).getTime();
+      const now = new Date();
+      const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).getTime();
+      const yesterdayStart = todayStart - 86400000;
+      
+      if (dateFilter === 'TODAY') {
+        if (tradeDate < todayStart) return false;
+      } else if (dateFilter === 'YESTERDAY') {
+        if (tradeDate < yesterdayStart || tradeDate >= todayStart) return false;
+      } else if (dateFilter === '7D') {
+        if (tradeDate < todayStart - 6 * 86400000) return false;
+      } else if (dateFilter === '30D') {
+        if (tradeDate < todayStart - 29 * 86400000) return false;
+      } else if (dateFilter === 'CUSTOM') {
+        if (customStartDate) {
+          const start = new Date(customStartDate).getTime();
+          if (tradeDate < start) return false;
+        }
+        if (customEndDate) {
+          const end = new Date(customEndDate).getTime() + 86400000; // End of day
+          if (tradeDate >= end) return false;
+        }
+      }
+    }
+
     return true;
   });
 
@@ -51,10 +99,10 @@ export const JournalView: React.FC = () => {
         <div>
           <h2 className="text-base font-extrabold text-[#0F0F0F] flex items-center space-x-2">
             <BookOpen className="w-5 h-5 text-[#0F0F0F]" />
-            <span>Jurnal Entry Trading</span>
+            <span>{getTranslation(settings.language, 'nav.journal')} Entry Trading</span>
           </h2>
           <p className="text-xs text-[#737373]">
-            {trades.length} Total trade tercatat {userProfile ? '(Live MT5 Sync)' : '(Mode Tamu)'}
+            {trades.length} {getTranslation(settings.language, 'dash.closedTrades')}
           </p>
         </div>
 
@@ -63,7 +111,7 @@ export const JournalView: React.FC = () => {
           {assignedAccountId && mt5Data?.isConnected ? (
             <div className="flex items-center space-x-1.5 px-2.5 py-1 rounded-xl bg-emerald-50 text-emerald-800 border border-emerald-200 text-[11px] font-mono-num font-bold">
               <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse" />
-              <span>MT5 #{assignedAccountId}</span>
+              <span>MT5 Terhubung</span>
             </div>
           ) : (
             <div className="flex items-center space-x-1.5 px-2.5 py-1 rounded-xl bg-[#F7F7F5] text-[#737373] border border-[#E5E5E2] text-[11px] font-semibold">
@@ -90,7 +138,7 @@ export const JournalView: React.FC = () => {
           <Search className="w-4 h-4 text-[#A3A3A3] absolute left-3.5 top-3" />
           <input
             type="text"
-            placeholder="Cari pair, strategi, catatan..."
+            placeholder={settings.language === 'id' ? "Cari pair, keterangan, catatan..." : settings.language === 'en' ? "Search pair, details, notes..." : "Cari pasangan, butiran, nota..."}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="w-full bg-white border border-[#E5E5E2] rounded-2xl pl-10 pr-4 py-2.5 text-xs text-[#0F0F0F] placeholder:text-[#A3A3A3] focus:outline-none focus:border-[#0F0F0F] shadow-sm font-medium"
@@ -109,53 +157,106 @@ export const JournalView: React.FC = () => {
                   : 'bg-white text-[#737373] border border-[#E5E5E2] hover:text-[#0F0F0F]'
               }`}
             >
-              {status === 'ALL' ? 'Semua' : status}
+              {status === 'ALL' ? (settings.language === 'id' ? 'Semua' : settings.language === 'en' ? 'All' : 'Semua') : status}
             </button>
           ))}
+        </div>
 
-          {/* Filter Pair Selector */}
+        <div className="flex items-center space-x-2 pt-1 relative z-10">
           {availablePairs.length > 0 && (
-            <div className="w-36 flex-shrink-0">
+            <div className="w-32 flex-shrink-0">
               <CustomSelect
                 value={filterPair}
                 onChange={(val) => setFilterPair(String(val))}
                 options={[
-                  { value: 'ALL', label: 'Semua Pair' },
+                  { value: 'ALL', label: settings.language === 'en' ? 'All Pairs' : 'Semua Pair' },
                   ...availablePairs.map(p => ({ value: p, label: p }))
                 ]}
               />
             </div>
           )}
+
+          {/* Date Filter Selector */}
+          <div className="w-40 flex-shrink-0">
+            <CustomSelect
+              value={dateFilter}
+              onChange={(val) => setDateFilter(String(val))}
+              options={[
+                { value: 'ALL', label: settings.language === 'en' ? 'All Time' : 'Semua Waktu' },
+                { value: 'TODAY', label: settings.language === 'en' ? 'Today' : 'Hari Ini' },
+                { value: 'YESTERDAY', label: settings.language === 'en' ? 'Yesterday' : 'Kemarin' },
+                { value: '7D', label: settings.language === 'en' ? 'Last 7 Days' : '7 Hari Terakhir' },
+                { value: '30D', label: settings.language === 'en' ? 'Last 30 Days' : '30 Hari Terakhir' },
+                { value: 'CUSTOM', label: settings.language === 'en' ? 'Custom Range...' : 'Pilih Tanggal...' }
+              ]}
+            />
+          </div>
         </div>
+
+        {dateFilter === 'CUSTOM' && (
+          <div className="flex items-center space-x-2 text-xs pt-1">
+            <input 
+              type="date" 
+              value={customStartDate} 
+              onChange={e => setCustomStartDate(e.target.value)} 
+              className="flex-1 bg-white border border-[#E5E5E2] rounded-xl px-3 py-2 focus:outline-none text-[#0F0F0F] font-bold" 
+            />
+            <span className="text-[#A3A3A3] font-medium">-</span>
+            <input 
+              type="date" 
+              value={customEndDate} 
+              onChange={e => setCustomEndDate(e.target.value)} 
+              className="flex-1 bg-white border border-[#E5E5E2] rounded-xl px-3 py-2 focus:outline-none text-[#0F0F0F] font-bold" 
+            />
+          </div>
+        )}
       </div>
 
       {/* Trade Cards List */}
       {filteredTrades.length === 0 ? (
         <div className="card-light p-8 text-center space-y-2">
           <BookOpen className="w-8 h-8 text-[#A3A3A3] mx-auto" />
-          <div className="text-xs font-bold text-[#0F0F0F]">Tidak ada trade yang cocok</div>
+          <div className="text-xs font-bold text-[#0F0F0F]">{settings.language === 'en' ? 'No matching trades' : settings.language === 'ms' ? 'Tiada dagangan sepadan' : 'Tidak ada trade yang cocok'}</div>
           <p className="text-[11px] text-[#737373]">
-            {userProfile ? 'Order transaksi akan otomatis muncul saat Anda trading di MT5.' : 'Masuk akun untuk sinkronisasi live.'}
+            {userProfile ? (settings.language === 'en' ? 'Transactions will appear automatically when you trade on MT5.' : 'Order transaksi akan otomatis muncul saat Anda trading di MT5.') : (settings.language === 'en' ? 'Sign in to sync live.' : 'Masuk akun untuk sinkronisasi live.')}
           </p>
         </div>
       ) : (
-        <div className="space-y-3">
+        <div className="space-y-2.5">
           {filteredTrades.map((trade) => {
             const isDeposit = trade.outcome === 'DEPOSIT' || trade.direction === 'DEPOSIT';
             const isWithdrawal = trade.outcome === 'WITHDRAWAL' || trade.direction === 'WITHDRAWAL';
             const isWin = trade.outcome === 'WIN';
             const isLoss = trade.outcome === 'LOSS';
             const isOverLot = !isDeposit && !isWithdrawal && !trade.isCompliantWithRisk;
+            const isExpanded = expandedTradeIds.has(trade.id);
+
+            // Formatted Date and Time for close / execution
+            const tradeDateObj = new Date(trade.date);
+            const formattedDate = tradeDateObj.toLocaleDateString('id-ID', {
+              day: 'numeric',
+              month: 'short',
+              year: 'numeric'
+            });
+            const formattedTime = tradeDateObj.toLocaleTimeString('id-ID', {
+              hour: '2-digit',
+              minute: '2-digit',
+              hour12: false
+            }) + ' WIB';
 
             return (
               <div
                 key={trade.id}
-                className="card-light p-4 space-y-3 hover:border-[#D4D4D0] transition-all"
+                className="card-light overflow-hidden transition-all duration-200 border-[#E5E5E2] hover:border-[#D4D4D0] shadow-sm"
               >
-                {/* Top Row: Direction, Pair, Lot, PnL */}
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center space-x-2.5">
-                    <span className={`px-2 py-1 rounded-xl text-xs font-extrabold ${
+                {/* Collapsed Header / Summary - Clickable to Expand */}
+                <div
+                  onClick={() => toggleExpand(trade.id)}
+                  className="p-3.5 flex items-center justify-between cursor-pointer select-none hover:bg-[#FAF9F6]/60 transition-colors"
+                >
+                  {/* Left: Position Direction, Pair, Lot, Close Date & Time */}
+                  <div className="flex items-center space-x-3">
+                    <span className={`px-2.5 py-1 rounded-xl text-xs font-black shrink-0 ${
                       isDeposit
                         ? 'bg-teal-50 text-teal-800 border border-teal-200'
                         : isWithdrawal
@@ -166,27 +267,26 @@ export const JournalView: React.FC = () => {
                     }`}>
                       {isDeposit ? 'DEPOSIT' : isWithdrawal ? 'WITHDRAW' : trade.direction}
                     </span>
-                    <div>
-                      <div className="flex items-center space-x-1.5">
-                        <span className="text-sm font-extrabold text-[#0F0F0F]">{trade.pair}</span>
+
+                    <div className="space-y-0.5">
+                      <div className="flex items-center space-x-2">
+                        <span className="text-sm font-extrabold text-[#0F0F0F] tracking-tight">{trade.pair}</span>
                         {!isDeposit && !isWithdrawal && (
-                          <span className="text-xs font-mono-num font-bold text-[#737373]">
+                          <span className="text-xs font-mono-num font-bold text-[#525252] bg-[#F0F0ED] px-2 py-0.5 rounded-md border border-[#E5E5E2]">
                             {trade.lotSize} Lot
                           </span>
                         )}
                       </div>
-                      <span className="text-[10px] text-[#A3A3A3] font-medium">
-                        {new Date(trade.date).toLocaleString('id-ID', {
-                          day: 'numeric',
-                          month: 'short',
-                          hour: '2-digit',
-                          minute: '2-digit'
-                        })}
-                      </span>
+                      <div className="text-[11px] text-[#737373] font-medium flex items-center space-x-1">
+                        <span>{formattedDate}</span>
+                        <span>•</span>
+                        <span className="font-mono-num">{formattedTime}</span>
+                      </div>
                     </div>
                   </div>
 
-                  <div className="text-right flex items-center space-x-2.5">
+                  {/* Right: Profit/Loss Amount, Outcome Badge & Expand Chevron */}
+                  <div className="flex items-center space-x-3 text-right shrink-0">
                     <div>
                       <div className={`text-sm font-black font-mono-num ${
                         isDeposit || isWin 
@@ -197,7 +297,7 @@ export const JournalView: React.FC = () => {
                       }`}>
                         {trade.pnl >= 0 ? '+' : ''}{formatCurrency(trade.pnl, settings.currency)}
                       </div>
-                      <div className={`text-[10px] font-bold ${
+                      <div className={`text-[10px] font-extrabold ${
                         isDeposit
                           ? 'text-teal-700'
                           : isWithdrawal
@@ -214,97 +314,128 @@ export const JournalView: React.FC = () => {
                       </div>
                     </div>
 
-                    <button
-                      onClick={() => deleteTrade(trade.id)}
-                      className="p-1.5 rounded-xl bg-[#F7F7F5] border border-[#E5E5E2] text-[#A3A3A3] hover:text-rose-600 hover:border-rose-200 transition-colors"
-                      title="Hapus Jurnal"
+                    <div className="w-7 h-7 rounded-xl bg-[#F7F7F5] border border-[#E5E5E2] flex items-center justify-center text-[#737373] transition-transform duration-200">
+                      <ChevronDown className={`w-4 h-4 transition-transform duration-200 ${isExpanded ? 'rotate-180 text-[#0F0F0F]' : ''}`} />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Expanded Details Section */}
+                <AnimatePresence initial={false}>
+                  {isExpanded && (
+                    <motion.div
+                      initial={{ height: 0, opacity: 0 }}
+                      animate={{ height: 'auto', opacity: 1 }}
+                      exit={{ height: 0, opacity: 0 }}
+                      transition={{ duration: 0.2, ease: 'easeInOut' }}
+                      className="border-t border-[#E5E5E2] bg-[#FAF9F6]/80 p-4 space-y-3"
                     >
-                      <Trash2 className="w-3.5 h-3.5" />
-                    </button>
-                  </div>
-                </div>
+                      {/* Price Levels or Transaction Info */}
+                      {isDeposit || isWithdrawal ? (
+                        <div className="bg-white p-3 rounded-2xl border border-[#E5E5E2] text-xs flex items-center justify-between shadow-xs">
+                          <div>
+                            <span className="text-[#737373] text-[10px] block font-semibold uppercase">{settings.language === 'en' ? 'Mutation Type' : 'Tipe Mutasi'}</span>
+                            <span className="font-bold text-[#0F0F0F]">{isDeposit ? (settings.language === 'en' ? 'Deposit In' : 'Deposit Masuk') : (settings.language === 'en' ? 'Withdrawal' : 'Penarikan Modal')}</span>
+                          </div>
+                          <div className="text-right">
+                            <span className="text-[#737373] text-[10px] block font-semibold uppercase">Keterangan Mutasi</span>
+                            <span className="font-mono-num font-semibold text-[#525252] truncate max-w-[200px] block">{trade.notes || '-'}</span>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="grid grid-cols-3 gap-2 bg-white p-3 rounded-2xl border border-[#E5E5E2] text-xs shadow-xs">
+                          <div>
+                            <span className="text-[#737373] text-[10px] block font-semibold uppercase">Entry Price</span>
+                            <span className="font-mono-num font-extrabold text-[#0F0F0F]">{trade.entryPrice || '-'}</span>
+                          </div>
+                          <div>
+                            <span className="text-[#737373] text-[10px] block font-semibold uppercase">Stop Loss</span>
+                            <span className="font-mono-num font-extrabold text-rose-600">{trade.stopLoss || '-'}</span>
+                          </div>
+                          <div>
+                            <span className="text-[#737373] text-[10px] block font-semibold uppercase">Take Profit</span>
+                            <span className="font-mono-num font-extrabold text-emerald-600">{trade.takeProfit || '-'}</span>
+                          </div>
+                        </div>
+                      )}
 
-                {/* Price Levels or Transaction Info */}
-                {isDeposit || isWithdrawal ? (
-                  <div className="bg-[#F7F7F5] p-2.5 rounded-2xl border border-[#E5E5E2] text-[11px] flex items-center justify-between">
-                    <div>
-                      <span className="text-[#737373] text-[10px] block">Tipe Mutasi</span>
-                      <span className="font-bold text-[#0F0F0F]">{isDeposit ? 'Deposit Masuk' : 'Penarikan Modal'}</span>
-                    </div>
-                    <div className="text-right">
-                      <span className="text-[#737373] text-[10px] block">Keterangan</span>
-                      <span className="font-mono-num font-semibold text-[#525252] truncate max-w-[200px] block">{trade.notes}</span>
-                    </div>
-                  </div>
-                ) : (
-                  <div className="grid grid-cols-3 gap-2 bg-[#F7F7F5] p-2.5 rounded-2xl border border-[#E5E5E2] text-[11px]">
-                    <div>
-                      <span className="text-[#737373] text-[10px] block">Entry</span>
-                      <span className="font-mono-num font-bold text-[#0F0F0F]">{trade.entryPrice || '-'}</span>
-                    </div>
-                    <div>
-                      <span className="text-[#737373] text-[10px] block">Stop Loss</span>
-                      <span className="font-mono-num font-bold text-rose-600">{trade.stopLoss || '-'}</span>
-                    </div>
-                    <div>
-                      <span className="text-[#737373] text-[10px] block">Take Profit</span>
-                      <span className="font-mono-num font-bold text-emerald-600">{trade.takeProfit || '-'}</span>
-                    </div>
-                  </div>
-                )}
+                      {/* Over-lot warning banner if non-compliant */}
+                      {isOverLot && (
+                        <div className="flex items-center space-x-2 text-xs text-amber-800 bg-amber-50 p-2.5 rounded-2xl border border-amber-200">
+                          <AlertTriangle className="w-4 h-4 flex-shrink-0 text-amber-600" />
+                          <span>Over-lot: Dipasang {trade.lotSize} lot (rekomendasi sistem: {trade.recommendedLotSize} lot).</span>
+                        </div>
+                      )}
 
-                {/* Over-lot warning banner if non-compliant */}
-                {isOverLot && (
-                  <div className="flex items-center space-x-1.5 text-[10px] text-amber-800 bg-amber-50 px-2.5 py-1.5 rounded-xl border border-amber-200">
-                    <AlertTriangle className="w-3.5 h-3.5 flex-shrink-0 text-amber-600" />
-                    <span>Over-lot: Dipasang {trade.lotSize} lot (rekomendasi: {trade.recommendedLotSize} lot).</span>
-                  </div>
-                )}
+                      {/* Keterangan & Detail Catatan */}
+                      <div className="space-y-2">
+                        <div className="bg-white p-3 rounded-2xl border border-[#E5E5E2] space-y-1.5 shadow-xs">
+                          <div className="flex items-center space-x-1.5 text-xs text-[#737373]">
+                            <Info className="w-3.5 h-3.5 text-[#0F0F0F]" />
+                            <span className="font-bold text-[#0F0F0F]">{settings.language === 'en' ? 'Details:' : 'Keterangan:'}</span>
+                          </div>
+                          <div className="text-xs text-[#262626] font-medium leading-relaxed">
+                            {trade.notes || trade.strategy || 'Eksekusi transaksi live MT5'}
+                          </div>
+                        </div>
 
-                {/* Strategy & Emotions */}
-                <div className="space-y-1.5 text-xs">
-                  <div className="flex items-center justify-between text-[11px]">
-                    <span className="text-[#737373] font-medium">Strategi: <span className="text-[#0F0F0F] font-bold">{trade.strategy || 'Live MT5 Execution'}</span></span>
-                  </div>
+                        {/* Emotions / Psikologi Tags */}
+                        {trade.emotions && trade.emotions.length > 0 && (
+                          <div className="space-y-1">
+                            <span className="text-[10px] text-[#737373] font-bold uppercase tracking-wider block">Psikologi / Emosi:</span>
+                            <div className="flex flex-wrap gap-1.5">
+                              {trade.emotions.map((e) => {
+                                const isBad = e === 'FOMO' || e === 'Revenge Trade' || e === 'Greedy' || e === 'Overtrading';
+                                return (
+                                  <span
+                                    key={e}
+                                    className={`px-2.5 py-1 rounded-xl text-[11px] font-bold ${
+                                      isBad
+                                        ? 'bg-rose-50 text-rose-700 border border-rose-200'
+                                        : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
+                                    }`}
+                                  >
+                                    {e}
+                                  </span>
+                                );
+                              })}
+                            </div>
+                          </div>
+                        )}
 
-                  {trade.emotions && trade.emotions.length > 0 && (
-                    <div className="flex flex-wrap gap-1">
-                      {trade.emotions.map((e) => {
-                        const isBad = e === 'FOMO' || e === 'Revenge Trade' || e === 'Greedy' || e === 'Overtrading';
-                        return (
-                          <span
-                            key={e}
-                            className={`px-2 py-0.5 rounded-lg text-[10px] font-semibold ${
-                              isBad
-                                ? 'bg-rose-50 text-rose-700 border border-rose-200'
-                                : 'bg-emerald-50 text-emerald-700 border border-emerald-200'
-                            }`}
+                        {/* Chart Screenshot Preview Button */}
+                        {trade.screenshotUrl && (
+                          <div className="pt-1">
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation();
+                                setActiveImagePreview(trade.screenshotUrl || null);
+                              }}
+                              className="px-3 py-2 rounded-xl bg-white border border-[#E5E5E2] text-xs text-[#0F0F0F] hover:bg-[#F2F2EF] transition-all flex items-center space-x-1.5 font-bold shadow-xs"
+                            >
+                              <ImageIcon className="w-4 h-4 text-[#0F0F0F]" />
+                              <span>Lihat Screenshot Analisa Chart</span>
+                            </button>
+                          </div>
+                        )}
+
+                        {/* Delete Trade Button */}
+                        <div className="pt-2 flex justify-end">
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              deleteTrade(trade.id);
+                            }}
+                            className="px-3 py-1.5 rounded-xl bg-white border border-rose-200 text-rose-600 hover:bg-rose-50 text-xs font-bold transition-all flex items-center space-x-1.5 shadow-xs"
                           >
-                            {e}
-                          </span>
-                        );
-                      })}
-                    </div>
+                            <Trash2 className="w-3.5 h-3.5" />
+                            <span>Hapus Jurnal</span>
+                          </button>
+                        </div>
+                      </div>
+                    </motion.div>
                   )}
-
-                  {trade.notes && (
-                    <p className="text-[11px] text-[#525252] bg-[#F7F7F5] p-2.5 rounded-xl border border-[#E5E5E2]">
-                      {trade.notes}
-                    </p>
-                  )}
-
-                  {trade.screenshotUrl && (
-                    <div className="pt-1">
-                      <button
-                        onClick={() => setActiveImagePreview(trade.screenshotUrl || null)}
-                        className="text-[11px] text-[#0F0F0F] hover:underline flex items-center space-x-1 font-bold"
-                      >
-                        <ImageIcon className="w-3.5 h-3.5" />
-                        <span>Lihat Screenshot Chart</span>
-                      </button>
-                    </div>
-                  )}
-                </div>
+                </AnimatePresence>
               </div>
             );
           })}

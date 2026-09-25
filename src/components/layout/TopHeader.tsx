@@ -3,8 +3,11 @@ import { useJournal } from '../../context/JournalContext';
 import { 
   Bell, 
   Settings, 
-  ArrowUpCircle
+  ArrowUpCircle,
+  Moon,
+  Sun
 } from 'lucide-react';
+import { getTranslation } from '../../lib/translations';
 
 export const TopHeader: React.FC = () => {
   const { 
@@ -13,14 +16,16 @@ export const TopHeader: React.FC = () => {
     setIsSettingsModalOpen,
     updateAvailable,
     setIsUpdateModalOpen,
-    userProfile
+    userProfile,
+    settings,
+    updateSettings
   } = useJournal();
 
   const getGreeting = () => {
     const hour = new Date().getHours();
-    if (hour < 12) return 'Good morning,';
-    if (hour < 18) return 'Good afternoon,';
-    return 'Good evening,';
+    if (hour < 12) return getTranslation(settings.language, 'header.greeting.morning');
+    if (hour < 18) return getTranslation(settings.language, 'header.greeting.afternoon');
+    return getTranslation(settings.language, 'header.greeting.evening');
   };
 
   const getInitials = (name: string) => {
@@ -63,9 +68,6 @@ export const TopHeader: React.FC = () => {
           </span>
           <h1 className="text-base font-extrabold tracking-tight text-[#0F0F0F] leading-tight flex items-center space-x-1.5">
             <span>{userProfile?.displayName || 'Darpan Trader'}</span>
-            <span className="text-[8px] uppercase font-bold tracking-wider px-1.5 py-0.5 rounded-full bg-[#0F0F0F] text-white">
-              PRO
-            </span>
           </h1>
         </div>
       </div>
@@ -80,7 +82,7 @@ export const TopHeader: React.FC = () => {
             title="Update Tersedia"
           >
             <ArrowUpCircle className="w-3.5 h-3.5" />
-            <span className="hidden sm:inline">Update</span>
+            <span className="hidden sm:inline">{getTranslation(settings.language, 'header.update')}</span>
           </button>
         )}
 
@@ -96,6 +98,15 @@ export const TopHeader: React.FC = () => {
               {unreadNotificationCount}
             </span>
           )}
+        </button>
+
+        {/* Theme Toggle */}
+        <button
+          onClick={() => updateSettings({ theme: settings.theme === 'dark' ? 'light' : 'dark' })}
+          className="w-8 h-8 rounded-xl bg-white border border-[#E5E5E2] text-[#525252] hover:text-[#0F0F0F] hover:bg-[#F2F2EF] transition-colors flex items-center justify-center shadow-sm"
+          title="Ubah Tema Warna"
+        >
+          {settings.theme === 'dark' ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
         </button>
 
         {/* Dedicated Settings Button */}

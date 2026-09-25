@@ -24,7 +24,10 @@ import {
   Image as ImageIcon,
   Flame,
   Radio,
-  Sliders
+  Sliders,
+  Moon,
+  Sun,
+  Languages
 } from 'lucide-react';
 import { CustomSelect } from '../ui/CustomSelect';
 import { playWinSound, playAnalysisNotificationSound } from '../../lib/soundEffects';
@@ -48,6 +51,12 @@ const ACCOUNT_TYPE_OPTIONS = [
   { value: 'LIVE', label: 'Live Real Account' },
   { value: 'PROP_FIRM', label: 'Prop Firm Funded' },
   { value: 'DEMO', label: 'Demo / Practice' },
+];
+
+const LANGUAGE_OPTIONS = [
+  { value: 'id', label: 'Bahasa Indonesia' },
+  { value: 'en', label: 'Bahasa Inggris' },
+  { value: 'ms', label: 'Bahasa Melayu' },
 ];
 
 // Preset Avatar SVG/Image Options
@@ -166,24 +175,31 @@ export const SettingsModal: React.FC = () => {
       let detectedBroker = 'Exness';
       let detectedType: 'LIVE' | 'DEMO' | 'PROP_FIRM' = 'LIVE';
 
-      if (mt5Data?.akun) {
-        const lower = mt5Data.akun.toLowerCase();
-        if (lower.includes('demo')) {
-          detectedType = 'DEMO';
-        } else if (lower.includes('prop') || lower.includes('funded') || lower.includes('ftmo')) {
-          detectedType = 'PROP_FIRM';
-        } else {
-          detectedType = 'LIVE';
+      if (mt5Data) {
+        if (mt5Data.broker) {
+          detectedBroker = mt5Data.broker;
+        } else if (mt5Data.akun) {
+          const lower = mt5Data.akun.toLowerCase();
+          if (lower.includes('exness')) detectedBroker = 'Exness';
+          else if (lower.includes('hfm') || lower.includes('hotforex')) detectedBroker = 'HFM (HotForex)';
+          else if (lower.includes('ic') || lower.includes('icmarkets')) detectedBroker = 'IC Markets';
+          else if (lower.includes('xm')) detectedBroker = 'XM Global';
+          else if (lower.includes('octa')) detectedBroker = 'OctaFX';
+          else if (lower.includes('ftmo')) detectedBroker = 'FTMO / Prop Firm';
+          else if (lower.includes('funded')) detectedBroker = 'FundedNext / Funded';
+          else if (lower.includes('metaquotes')) detectedBroker = 'MetaQuotes MT5';
         }
 
-        if (lower.includes('exness')) detectedBroker = 'Exness';
-        else if (lower.includes('hfm') || lower.includes('hotforex')) detectedBroker = 'HFM (HotForex)';
-        else if (lower.includes('ic') || lower.includes('icmarkets')) detectedBroker = 'IC Markets';
-        else if (lower.includes('xm')) detectedBroker = 'XM Global';
-        else if (lower.includes('octa')) detectedBroker = 'OctaFX';
-        else if (lower.includes('ftmo')) detectedBroker = 'FTMO / Prop Firm';
-        else if (lower.includes('funded')) detectedBroker = 'FundedNext / Funded';
-        else if (lower.includes('metaquotes')) detectedBroker = 'MetaQuotes MT5';
+        if (mt5Data.tradeMode !== undefined) {
+          detectedType = mt5Data.tradeMode === 0 ? 'DEMO' : mt5Data.tradeMode === 2 ? 'LIVE' : 'PROP_FIRM';
+        } else if (mt5Data.akun) {
+          const lower = mt5Data.akun.toLowerCase();
+          if (lower.includes('demo')) {
+            detectedType = 'DEMO';
+          } else if (lower.includes('prop') || lower.includes('funded') || lower.includes('ftmo')) {
+            detectedType = 'PROP_FIRM';
+          }
+        }
       }
 
       setBroker(detectedBroker);
@@ -514,6 +530,14 @@ export const SettingsModal: React.FC = () => {
               <Zap className="w-4 h-4 text-emerald-600" />
               <span>Koneksi Akun MT5</span>
             </span>
+            <button
+              onClick={handleAutoSyncFromMT5}
+              disabled={isMT5Loading}
+              className="flex items-center space-x-1 px-2.5 py-1 rounded-xl bg-emerald-50 text-emerald-700 border border-emerald-200 hover:bg-emerald-100 transition-colors text-[10px] font-bold shadow-sm"
+            >
+              <RefreshCw className={`w-3 h-3 ${isMT5Loading ? 'animate-spin' : ''}`} />
+              <span>Tarik Data MT5</span>
+            </button>
           </div>
 
           <div className="p-2.5 rounded-xl bg-white border border-[#E5E5E2] space-y-1.5 text-xs">
@@ -646,7 +670,48 @@ export const SettingsModal: React.FC = () => {
           </button>
         </div>
 
-        {/* 4. Authentication Card */}
+        {/* 4. Tampilan & Bahasa */}
+        <div className="p-3.5 rounded-2xl bg-[#F7F7F5] border border-[#E5E5E2] space-y-3 text-xs">
+          <div className="flex items-center justify-between">
+            <span className="font-extrabold text-[#0F0F0F] flex items-center space-x-1.5">
+              <Sun className="w-4 h-4 text-[#0F0F0F]" />
+              <span>Tampilan & Bahasa</span>
+            </span>
+          </div>
+
+          <div className="space-y-3 pt-1">
+            {/* Theme Toggle */}
+            <div className="flex items-center justify-between">
+              <div>
+                <div className="text-xs font-semibold text-[#0F0F0F]">Mode Gelap (Dark Mode)</div>
+                <div className="text-[10px] text-[#737373]">Ubah tema ke mode malam</div>
+              </div>
+              <button
+                type="button"
+                onClick={() => updateSettings({ theme: settings.theme === 'dark' ? 'light' : 'dark' })}
+                className={`w-11 h-6 flex items-center rounded-full p-1 transition-colors ${
+                  settings.theme === 'dark' ? 'bg-[#0F0F0F] justify-end' : 'bg-[#D4D4D0] justify-start'
+                }`}
+              >
+                <div className="w-4 h-4 rounded-full bg-white shadow-md flex items-center justify-center">
+                  {settings.theme === 'dark' ? <Moon className="w-2.5 h-2.5 text-[#0F0F0F]" /> : <Sun className="w-2.5 h-2.5 text-[#737373]" />}
+                </div>
+              </button>
+            </div>
+
+            {/* Language Selector */}
+            <div className="space-y-1 pt-1 border-t border-[#E5E5E2]">
+              <div className="text-xs font-semibold text-[#0F0F0F] pt-2">Bahasa Aplikasi</div>
+              <CustomSelect
+                options={LANGUAGE_OPTIONS}
+                value={settings.language || 'id'}
+                onChange={(val) => updateSettings({ language: val as any })}
+              />
+            </div>
+          </div>
+        </div>
+
+        {/* 5. Authentication Card */}
         <div className="p-3.5 rounded-2xl bg-[#F7F7F5] border border-[#E5E5E2] space-y-2.5">
           <div className="flex items-center justify-between">
             <span className="text-xs font-bold text-[#0F0F0F] flex items-center space-x-1.5">
@@ -690,7 +755,7 @@ export const SettingsModal: React.FC = () => {
           )}
         </div>
 
-        {/* 5. Data Backup & Export / Import */}
+        {/* 6. Data Backup & Export / Import */}
         <div className="space-y-2 text-xs">
           <span className="font-bold text-[#737373] block px-1">Cadangan & Pemulihan Data</span>
           <div className="grid grid-cols-2 gap-2">
@@ -710,7 +775,7 @@ export const SettingsModal: React.FC = () => {
           </div>
         </div>
 
-        {/* 6. Onboarding Restart */}
+        {/* 7. Onboarding Restart */}
         <div className="p-3 rounded-2xl bg-[#F7F7F5] border border-[#E5E5E2] text-xs flex items-center justify-between">
           <div className="flex items-center space-x-1.5 text-[#0F0F0F] font-bold">
             <Smartphone className="w-4 h-4 text-[#737373]" />

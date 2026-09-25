@@ -6,10 +6,11 @@ import {
   ShieldCheck, 
   CalendarDays,
   BookOpen,
+  Sparkles,
   LucideIcon
 } from 'lucide-react';
 
-type NavTabId = 'dashboard' | 'planner' | 'calendar' | 'journal' | 'risk';
+type NavTabId = 'dashboard' | 'planner' | 'calendar' | 'journal' | 'risk' | 'coaching';
 
 interface TabItem {
   id: NavTabId;
@@ -23,10 +24,11 @@ const navTabs: TabItem[] = [
   { id: 'calendar', label: 'News', icon: CalendarDays },
   { id: 'journal', label: 'Journal', icon: BookOpen },
   { id: 'risk', label: 'Risk', icon: ShieldCheck },
+  { id: 'coaching', label: 'Evaluasi', icon: Sparkles },
 ];
 
 export const BottomNavigation: React.FC = () => {
-  const { activeTab, setActiveTab } = useJournal();
+  const { activeTab, setActiveTab, settings } = useJournal();
 
   return (
     <nav aria-label="Bottom Navigation" className="fixed bottom-0 left-0 right-0 z-40 flex justify-center pointer-events-none">
@@ -35,6 +37,17 @@ export const BottomNavigation: React.FC = () => {
           {navTabs.map((tab) => {
             const Icon = tab.icon;
             const isActive = activeTab === tab.id;
+            
+            // Translate the label using the translation file or simple map
+            let translatedLabel = tab.label;
+            if (settings.language === 'en') {
+              if (tab.id === 'coaching') translatedLabel = 'Eval';
+              if (tab.id === 'dashboard') translatedLabel = 'Home';
+              if (tab.id === 'journal') translatedLabel = 'Journal';
+            } else if (settings.language === 'ms') {
+              if (tab.id === 'coaching') translatedLabel = 'Penilaian';
+              if (tab.id === 'planner') translatedLabel = 'Pelan';
+            }
 
             return (
               <button
@@ -47,7 +60,7 @@ export const BottomNavigation: React.FC = () => {
                 <div className={`p-1.5 rounded-xl transition-all ${isActive ? 'bg-[#F2F2EF]' : 'bg-transparent'}`}>
                   <Icon className={`w-5 h-5 transition-transform ${isActive ? 'scale-105 stroke-[2.5]' : 'stroke-[1.75]'}`} />
                 </div>
-                <span className="text-[10px] tracking-tight mt-0.5 leading-none">{tab.label}</span>
+                <span className="text-[10px] tracking-tight mt-0.5 leading-none">{translatedLabel}</span>
               </button>
             );
           })}

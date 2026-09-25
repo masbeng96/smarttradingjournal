@@ -13,7 +13,9 @@ import {
   ShieldAlert,
   Sparkles,
   RefreshCw,
-  LogIn
+  LogIn,
+  Clock,
+  AlertTriangle
 } from 'lucide-react';
 import { 
   ResponsiveContainer, 
@@ -23,6 +25,9 @@ import {
   YAxis, 
   Tooltip 
 } from 'recharts';
+import { fetchEconomicCalendar, getEventCountdownText, COUNTRY_FLAGS } from '../../lib/economicCalendarService';
+import { EconomicEvent } from '../../types/journal';
+import { getTranslation } from '../../lib/translations';
 
 export const OverviewDashboard: React.FC = () => {
   const { 
@@ -43,6 +48,24 @@ export const OverviewDashboard: React.FC = () => {
   } = useJournal();
 
   const [isBalanceHidden, setIsBalanceHidden] = useState<boolean>(false);
+  const [nearestNews, setNearestNews] = useState<EconomicEvent | null>(null);
+
+  React.useEffect(() => {
+    const fetchNews = async () => {
+      try {
+        const events = await fetchEconomicCalendar('thisweek', false);
+        const now = Date.now();
+        // Find the first event that is in the future
+        const upcoming = events.filter(e => e.timestamp && e.timestamp > now).sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+        if (upcoming.length > 0) {
+          setNearestNews(upcoming[0]);
+        }
+      } catch (err) {
+        console.error('Failed to fetch calendar for dashboard', err);
+      }
+    };
+    fetchNews();
+  }, []);
 
   const isMT5 = Boolean(mt5Data && mt5Data.isConnected);
 
@@ -151,34 +174,6 @@ export const OverviewDashboard: React.FC = () => {
     return points;
   }, [trades, effectiveStartCap, isMT5, mt5Data]);
 
-  // Recent trades
-  const recentTrades = trades.slice(0, 5);
-
-  const getTradeDateLabel = (timestamp: number) => {
-    const tradeDate = new Date(timestamp);
-    const today = new Date();
-    const yesterday = new Date();
-    yesterday.setDate(today.getDate() - 1);
-
-    if (tradeDate.toDateString() === today.toDateString()) return 'Today';
-    if (tradeDate.toDateString() === yesterday.toDateString()) return 'Yesterday';
-    return tradeDate.toLocaleDateString('en-GB', { day: 'numeric', month: 'short' });
-  };
-
-  const getPairIcon = (pair: string, direction?: string) => {
-    const p = (pair || '').toUpperCase();
-    const d = (direction || '').toUpperCase();
-    if (p === 'DEPOSIT' || d === 'DEPOSIT') return '💰';
-    if (p === 'WITHDRAWAL' || d === 'WITHDRAWAL') return '🏦';
-    if (p.includes('XAU') || p.includes('GOLD')) return '🥇';
-    if (p.includes('BTC') || p.includes('CRYPTO') || p.includes('ETH')) return '₿';
-    if (p.includes('EUR')) return '€';
-    if (p.includes('GBP')) return '£';
-    if (p.includes('JPY')) return '¥';
-    if (p.includes('NAS') || p.includes('US100') || p.includes('US30') || p.includes('SPX')) return '📈';
-    return '$';
-  };
-
   return (
     <div className="p-4 space-y-4 max-w-lg mx-auto">
       {/* 1. HERO TOTAL BALANCE CARD (10% ACCENT - DEEP SLEEK BLACK #0F0F0F) */}
@@ -187,12 +182,12 @@ export const OverviewDashboard: React.FC = () => {
           <div className="space-y-1">
             <div className="flex items-center space-x-2">
               <span className="text-xs font-semibold text-[#A3A3A3] tracking-tight">
-                Total Balance,
+                {getTranslation(settings.language, 'dash.totalBalance')}
               </span>
               <button
                 onClick={() => setIsBalanceHidden(!isBalanceHidden)}
                 className="text-[#737373] hover:text-white transition-colors"
-                title={isBalanceHidden ? "Tampilkan Saldo" : "Sembunyikan Saldo"}
+                title={isBalanceHidden ? getTranslation(settings.language, 'dash.showBalance') : getTranslation(settings.language, 'dash.hideBalance')}
               >
                 {isBalanceHidden ? <EyeOff className="w-3.5 h-3.5" /> : <Eye className="w-3.5 h-3.5" />}
               </button>
@@ -235,7 +230,7 @@ export const OverviewDashboard: React.FC = () => {
               <span>
                 {mt5Data 
                   ? `${mt5Data.floating_pnl >= 0 ? '+' : ''}${formatCurrency(mt5Data.floating_pnl, settings.currency)}`
-                  : `${growthPercent >= 0 ? '+' : ''}${formatPercent(growthPercent, 1)} this month`
+                  : `${growthPercent >= 0 ? '+' : ''}${formatPercent(growthPercent, 1)} ${getTranslation(settings.language, 'dash.thisMonth')}`
                 }
               </span>
             </div>
@@ -249,7 +244,7 @@ export const OverviewDashboard: React.FC = () => {
             ) : isMT5Loading ? (
               <div className="flex items-center space-x-1 px-2 py-0.5 rounded-full bg-neutral-900 text-[10px] text-amber-400">
                 <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-ping" />
-                <span>Syncing...</span>
+                <span>{getTranslation(settings.language, 'dash.syncing')}</span>
               </div>
             ) : null}
           </div>
@@ -258,25 +253,25 @@ export const OverviewDashboard: React.FC = () => {
         {/* Sub metrics grid */}
         <div className="grid grid-cols-4 gap-2 pt-3 mt-2 border-t border-neutral-800/60 text-center">
           <div>
-            <span className="text-[10px] text-[#737373] block">Balance</span>
+            <span className="text-[10px] text-[#737373] block">{getTranslation(settings.language, 'dash.balance')}</span>
             <span className="text-xs font-bold font-mono-num text-white">
               {formatCurrency(mt5Data ? mt5Data.balance : settings.initialCapital, settings.currency)}
             </span>
           </div>
           <div>
-            <span className="text-[10px] text-[#737373] block">Floating</span>
+            <span className="text-[10px] text-[#737373] block">{getTranslation(settings.language, 'dash.floating')}</span>
             <span className={`text-xs font-bold font-mono-num ${(mt5Data?.floating_pnl ?? 0) >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
               {mt5Data ? `${(mt5Data.floating_pnl ?? 0) >= 0 ? '+' : ''}${formatCurrency(mt5Data.floating_pnl ?? 0, settings.currency)}` : '$0.00'}
             </span>
           </div>
           <div>
-            <span className="text-[10px] text-[#737373] block">Margin</span>
+            <span className="text-[10px] text-[#737373] block">{getTranslation(settings.language, 'dash.margin')}</span>
             <span className="text-xs font-bold font-mono-num text-neutral-300">
               {formatCurrency(mt5Data?.margin ?? 0, settings.currency)}
             </span>
           </div>
           <div>
-            <span className="text-[10px] text-[#737373] block">Realized</span>
+            <span className="text-[10px] text-[#737373] block">{getTranslation(settings.language, 'dash.realized')}</span>
             <span className={`text-xs font-bold font-mono-num ${totalRealizedPnl >= 0 ? 'text-emerald-400' : 'text-rose-400'}`}>
               {totalRealizedPnl >= 0 ? '+' : ''}{formatCurrency(totalRealizedPnl, settings.currency)}
             </span>
@@ -284,186 +279,92 @@ export const OverviewDashboard: React.FC = () => {
         </div>
       </div>
 
-      {/* 2. QUICK ACTION GRID (4 PILL BUTTONS) */}
-      <div className="grid grid-cols-4 gap-2.5">
-        {/* Action 1: MT5 Sync / Login */}
-        <button
-          onClick={() => {
-            if (userProfile) refreshMT5Data();
-            else setIsAuthModalOpen(true);
-          }}
-          className="pill-action-btn p-3 flex flex-col items-center justify-center space-y-1.5 group text-center"
-        >
-          <div className="w-10 h-10 rounded-2xl bg-[#0F0F0F] text-white flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform">
-            {userProfile ? (
-              <RefreshCw className={`w-5 h-5 stroke-[2.2] ${isMT5Loading ? 'animate-spin text-emerald-400' : ''}`} />
-            ) : (
-              <LogIn className="w-5 h-5 stroke-[2.2]" />
-            )}
-          </div>
-          <span className="text-[11px] font-bold text-[#0F0F0F]">
-            {userProfile ? 'Sync MT5' : 'Masuk Akun'}
-          </span>
-        </button>
+      {/* Action Grid Removed per user request */}
 
-        {/* Action 2: Compound Planner */}
-        <button
-          onClick={() => setActiveTab('planner')}
-          className="pill-action-btn p-3 flex flex-col items-center justify-center space-y-1.5 group text-center"
-        >
-          <div className="w-10 h-10 rounded-2xl bg-[#F0F0ED] text-[#0F0F0F] flex items-center justify-center border border-[#E5E5E2] group-hover:scale-105 transition-transform">
-            <LineChartIcon className="w-5 h-5 stroke-[2.2]" />
-          </div>
-          <span className="text-[11px] font-bold text-[#0F0F0F]">Target Plan</span>
-        </button>
-
-        {/* Action 3: Lot Size Calc / Risk */}
-        <button
-          onClick={() => setActiveTab('risk')}
-          className="pill-action-btn p-3 flex flex-col items-center justify-center space-y-1.5 group text-center"
-        >
-          <div className="w-10 h-10 rounded-2xl bg-[#F0F0ED] text-[#0F0F0F] flex items-center justify-center border border-[#E5E5E2] group-hover:scale-105 transition-transform">
-            <ShieldAlert className="w-5 h-5 stroke-[2.2]" />
-          </div>
-          <span className="text-[11px] font-bold text-[#0F0F0F]">Risk & Lot</span>
-        </button>
-
-        {/* Action 4: News Calendar */}
-        <button
-          onClick={() => setActiveTab('calendar')}
-          className="pill-action-btn p-3 flex flex-col items-center justify-center space-y-1.5 group text-center"
-        >
-          <div className="w-10 h-10 rounded-2xl bg-[#F0F0ED] text-[#0F0F0F] flex items-center justify-center border border-[#E5E5E2] group-hover:scale-105 transition-transform">
-            <CalendarDays className="w-5 h-5 stroke-[2.2]" />
-          </div>
-          <span className="text-[11px] font-bold text-[#0F0F0F]">Kalender</span>
-        </button>
-      </div>
-
-      {/* 3. RECENT TRANSACTIONS / TRADES LIST */}
-      <div className="space-y-2.5">
-        <div className="flex items-center justify-between px-1">
-          <h2 className="text-sm font-extrabold text-[#0F0F0F] tracking-tight">
-            Recent Transactions
-          </h2>
-          <button
-            onClick={() => setActiveTab('journal')}
-            className="text-xs font-semibold text-[#737373] hover:text-[#0F0F0F] transition-colors"
-          >
-            View all
-          </button>
-        </div>
-
-        {recentTrades.length === 0 ? (
-          <div className="card-light p-6 text-center space-y-2">
-            <p className="text-xs text-[#737373]">
-              {userProfile ? 'Transaksi open & closed otomatis live dari akun MT5.' : 'Masuk ke akun Anda untuk menyinkronkan data trade MT5.'}
-            </p>
-            {!userProfile && (
-              <button
-                onClick={() => setIsAuthModalOpen(true)}
-                className="px-4 py-2 rounded-2xl bg-[#0F0F0F] text-white text-xs font-bold hover:bg-black transition-all inline-flex items-center space-x-1.5 shadow-sm"
-              >
-                <LogIn className="w-4 h-4" />
-                <span>Masuk ke Akun Trader</span>
-              </button>
-            )}
-          </div>
-        ) : (
-          <div className="space-y-2">
-            {recentTrades.map((trade) => {
-              const isDeposit = trade.outcome === 'DEPOSIT' || trade.direction === 'DEPOSIT';
-              const isWithdrawal = trade.outcome === 'WITHDRAWAL' || trade.direction === 'WITHDRAWAL';
-              const isWin = trade.outcome === 'WIN';
-              const isLoss = trade.outcome === 'LOSS';
-              const isOpen = trade.outcome === 'OPEN';
-              const icon = getPairIcon(trade.pair, trade.direction);
-              const dateLabel = getTradeDateLabel(trade.createdAt);
-
-              return (
-                <div
-                  key={trade.id}
-                  onClick={() => setActiveTab('journal')}
-                  className="card-light p-3.5 flex items-center justify-between cursor-pointer hover:border-[#D4D4D0] transition-all"
-                >
-                  {/* Left: Asset Icon & Pair / Strategy */}
-                  <div className="flex items-center space-x-3">
-                    <div className="w-10 h-10 rounded-2xl bg-[#F4F4F1] border border-[#E5E5E2] flex items-center justify-center text-base shadow-sm shrink-0">
-                      <span>{icon}</span>
-                    </div>
-                    <div>
-                      <div className="flex items-center space-x-1.5">
-                        <span className="text-xs font-extrabold text-[#0F0F0F]">{trade.pair}</span>
-                        <span className={`text-[9px] font-extrabold px-1.5 py-0.2 rounded-md ${
-                          isDeposit
-                            ? 'bg-teal-50 text-teal-800 border border-teal-200'
-                            : isWithdrawal
-                              ? 'bg-purple-50 text-purple-800 border border-purple-200'
-                              : trade.direction === 'BUY' 
-                                ? 'bg-emerald-50 text-emerald-700 border border-emerald-200' 
-                                : 'bg-rose-50 text-rose-700 border border-rose-200'
-                        }`}>
-                          {isDeposit ? 'DEPOSIT' : isWithdrawal ? 'WITHDRAW' : trade.direction}
-                        </span>
-                      </div>
-                      <div className="text-[11px] text-[#737373] truncate max-w-[140px] sm:max-w-[200px]">
-                        {trade.notes || trade.strategy || `${trade.lotSize} Lot • Live MT5`}
-                      </div>
-                    </div>
-                  </div>
-
-                  {/* Right: Profit/Loss Amount & Date */}
-                  <div className="text-right shrink-0">
-                    <div className={`text-xs font-bold font-mono-num ${
-                      isDeposit || isWin 
-                        ? 'text-emerald-600' 
-                        : isWithdrawal || isLoss 
-                          ? 'text-rose-600' 
-                          : isOpen 
-                            ? 'text-blue-600' 
-                            : 'text-[#0F0F0F]'
-                    }`}>
-                      {trade.pnl >= 0 ? '+' : ''}{formatCurrency(trade.pnl, settings.currency)}
-                    </div>
-                    <div className="text-[10px] text-[#A3A3A3] font-medium">
-                      {dateLabel}
-                    </div>
-                  </div>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
-
-      {/* 4. PERFORMANCE STATS GRID */}
-      <div className="grid grid-cols-3 gap-2.5">
+      {/* 3. PERFORMANCE STATS GRID */}
+      <div className="grid grid-cols-2 gap-2.5">
         <div className="card-light p-3 text-center">
-          <span className="text-[10px] uppercase font-bold text-[#737373] block mb-1">Win Rate</span>
+          <span className="text-[10px] uppercase font-bold text-[#737373] block mb-1">{getTranslation(settings.language, 'dash.winRate')}</span>
           <span className={`text-base font-extrabold font-mono-num ${winRate >= 50 ? 'text-emerald-600' : 'text-amber-600'}`}>
             {winRate}%
           </span>
           <span className="text-[10px] text-[#A3A3A3] block mt-0.5">
-            {trades.filter(t => t.outcome === 'WIN' || t.outcome === 'LOSS' || t.outcome === 'BE').length} Trades
+            {trades.filter(t => t.outcome === 'WIN' || t.outcome === 'LOSS' || t.outcome === 'BE').length} {getTranslation(settings.language, 'dash.trades')}
           </span>
         </div>
 
         <div className="card-light p-3 text-center">
-          <span className="text-[10px] uppercase font-bold text-[#737373] block mb-1">Target Harian</span>
-          <span className="text-xs font-bold font-mono-num text-[#0F0F0F]">
+          <span className="text-[10px] uppercase font-bold text-[#737373] block mb-1">{getTranslation(settings.language, 'dash.growth')}</span>
+          <span className={`text-base font-extrabold font-mono-num ${((currentEquity - effectiveStartCap) / effectiveStartCap) * 100 >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+            {(((currentEquity - effectiveStartCap) / effectiveStartCap) * 100).toFixed(1)}%
+          </span>
+          <span className="text-[10px] text-[#A3A3A3] block mt-0.5">{getTranslation(settings.language, 'dash.fromInitial')}</span>
+        </div>
+
+        <div className="card-light p-3 text-center">
+          <span className="text-[10px] uppercase font-bold text-[#737373] block mb-1">{getTranslation(settings.language, 'dash.dailyTarget')}</span>
+          <span className="text-sm font-bold font-mono-num text-[#0F0F0F]">
             {formatCurrency(dailyTargetAmount, settings.currency)}
           </span>
-          <span className="text-[10px] text-[#A3A3A3] block mt-0.5">{settings.monthlyTargetPercent}% / Bln</span>
+          <span className="text-[10px] text-[#A3A3A3] block mt-0.5">{settings.monthlyTargetPercent}% / {getTranslation(settings.language, 'dash.month')}</span>
         </div>
 
         <div className="card-light p-3 text-center">
-          <span className="text-[10px] uppercase font-bold text-[#737373] block mb-1">Profit Factor</span>
+          <span className="text-[10px] uppercase font-bold text-[#737373] block mb-1">{getTranslation(settings.language, 'dash.profitFactor')}</span>
           <span className={`text-base font-extrabold font-mono-num ${profitFactor >= 1.5 ? 'text-emerald-600' : 'text-[#0F0F0F]'}`}>
             {profitFactor}
           </span>
           <span className="text-[10px] text-[#A3A3A3] block mt-0.5">RR {settings.targetRRR}:1</span>
         </div>
       </div>
+
+      {/* 4. UPCOMING NEWS EVENT CARD */}
+      {nearestNews && (
+        <div 
+          onClick={() => setActiveTab('calendar')}
+          className={`card-light p-3.5 cursor-pointer hover:shadow-md transition-all space-y-2 select-none group ${
+            nearestNews.isHighImpact 
+              ? 'border-rose-200 hover:border-rose-400 bg-gradient-to-br from-rose-50/30 to-white' 
+              : nearestNews.impact === 'Medium'
+              ? 'border-amber-200 hover:border-amber-400 bg-gradient-to-br from-amber-50/30 to-white'
+              : 'hover:border-[#0F0F0F]'
+          }`}
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center space-x-1.5">
+              <span className="text-sm">{COUNTRY_FLAGS[nearestNews.country] || '🌐'}</span>
+              <span className="text-[11px] font-extrabold text-[#0F0F0F] font-mono-num">{nearestNews.country}</span>
+              <span className="text-[#A3A3A3] text-[10px]">•</span>
+              <span className="text-[10px] font-bold text-[#525252]">{nearestNews.timeWib}</span>
+            </div>
+            <div className="flex items-center space-x-1.5">
+              {nearestNews.isHighImpact ? (
+                <span className="flex items-center space-x-1 px-1.5 py-0.5 rounded text-[9px] font-extrabold bg-rose-100 text-rose-700 border border-rose-200">
+                  <span className="w-1 h-1 rounded-full bg-rose-600 animate-pulse" />
+                  <span>HIGH</span>
+                </span>
+              ) : nearestNews.impact === 'Medium' ? (
+                <span className="px-1.5 py-0.5 rounded text-[9px] font-bold bg-amber-100 text-amber-800 border border-amber-200">
+                  MED
+                </span>
+              ) : (
+                <span className="px-1.5 py-0.5 rounded text-[9px] font-medium bg-neutral-100 text-neutral-600 border border-neutral-200">
+                  LOW
+                </span>
+              )}
+            </div>
+          </div>
+          
+          <div className="flex items-start justify-between">
+            <h4 className="text-xs font-extrabold text-[#0F0F0F] leading-tight line-clamp-1 group-hover:text-emerald-700 transition-colors">
+              {nearestNews.title}
+            </h4>
+            <span className="text-[9px] px-1.5 py-0.5 rounded-md bg-[#F7F7F5] border border-[#E5E5E2] font-semibold text-[#737373] ml-2 shrink-0">
+              {getEventCountdownText(nearestNews.timestamp)}
+            </span>
+          </div>
+        </div>
+      )}
 
       {/* 5. 5:00 AM COACHING HIGHLIGHT PREVIEW */}
       {latestReport && (
@@ -484,7 +385,7 @@ export const OverviewDashboard: React.FC = () => {
             {latestReport.whatToMaintain[0] || latestReport.whatToImprove[0]}
           </p>
           <div className="flex items-center justify-end text-[11px] text-amber-700 font-semibold space-x-1">
-            <span>Buka Evaluasi Lengkap</span>
+            <span>{getTranslation(settings.language, 'dash.fullEvaluation')}</span>
             <ChevronRight className="w-3.5 h-3.5" />
           </div>
         </div>
@@ -495,12 +396,12 @@ export const OverviewDashboard: React.FC = () => {
         <div className="flex items-center justify-between">
           <div className="flex items-center space-x-2">
             <Target className="w-4 h-4 text-emerald-600" />
-            <h3 className="text-xs font-bold text-[#0F0F0F]">Kurva Pertumbuhan Akun</h3>
+            <h3 className="text-xs font-bold text-[#0F0F0F]">{getTranslation(settings.language, 'dash.equityCurve')}</h3>
           </div>
           <span className="text-[11px] text-[#737373] font-mono-num font-semibold">
             {trades.filter(t => t.outcome === 'WIN' || t.outcome === 'LOSS' || t.outcome === 'BE').length > 0 
-              ? `${trades.filter(t => t.outcome === 'WIN' || t.outcome === 'LOSS' || t.outcome === 'BE').length} Closed Trades` 
-              : 'Modal Awal'}
+              ? `${trades.filter(t => t.outcome === 'WIN' || t.outcome === 'LOSS' || t.outcome === 'BE').length} ${getTranslation(settings.language, 'dash.closedTrades')}` 
+              : getTranslation(settings.language, 'dash.initialCapital')}
           </span>
         </div>
 
