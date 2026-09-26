@@ -38,42 +38,47 @@ app.get('/api/version', (req, res) => {
 // Proxy for MT5 REST API endpoints (accounts 1 and 2)
 app.get(['/api/mt5/account/:id?', '/api/account/:id?'], async (req, res) => {
   const accountId = req.params.id || '1';
-  try {
-    const mt5Res = await fetch(`http://202.155.94.173/api/account/${accountId}`, {
-      headers: {
-        'x-api-key': 'TokenRahasia2026',
-        'Accept': 'application/json'
-      }
-    });
-    if (!mt5Res.ok) {
-      return res.status(200).json({ 
-        akun: `Akun ${accountId}`,
-        balance: 0,
-        equity: 0,
-        margin: 0,
-        floating_pnl: 0,
-        isConnected: false,
-        error: `Server MT5 HTTP ${mt5Res.status} (${mt5Res.statusText || 'Error'})`
+  
+  const endpoints = [
+    `http://202.155.94.173/api/account/${accountId}`,
+    `http://202.155.94.173:8080/api/account/${accountId}`
+  ];
+
+  for (const endpoint of endpoints) {
+    try {
+      const mt5Res = await fetch(endpoint, {
+        headers: {
+          'x-api-key': 'TokenRahasia2026',
+          'Accept': 'application/json'
+        },
+        signal: AbortSignal.timeout(5000)
       });
+      
+      if (mt5Res.ok) {
+        const data = await mt5Res.json();
+        return res.status(200).json({
+          ...data,
+          isConnected: true,
+        });
+      }
+    } catch (err) {
+      console.log(`Failed to fetch from ${endpoint}:`, err.message);
+      // Continue to next endpoint
     }
-    const data = await mt5Res.json();
-    res.status(200).json({
-      ...data,
-      isConnected: true,
-    });
-  } catch (err) {
-    console.error("Fetch API Error: ", err);
-    res.status(200).json({ 
-      akun: `Akun ${accountId}`,
-      balance: 0,
-      equity: 0,
-      margin: 0,
-      floating_pnl: 0,
-      isConnected: false,
-      error: err?.message || err?.name || String(err)
-    });
   }
+
+  // If all endpoints failed
+  return res.status(200).json({ 
+    akun: `Akun ${accountId}`,
+    balance: 0,
+    equity: 0,
+    margin: 0,
+    floating_pnl: 0,
+    isConnected: false,
+    error: `Server MT5 HTTP Error / Unreachable`
+  });
 });
+
 
 // Forex Factory Economic Calendar proxy endpoints
 app.get('/api/calendar/thisweek', async (req, res) => {
