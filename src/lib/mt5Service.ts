@@ -63,9 +63,9 @@ export async function fetchSingleMT5Account(accountId: 1 | 2 = 1, parentSignal?:
 
   for (const endpoint of candidateUrls) {
     try {
-      // 5-second timeout per candidate endpoint so it never hangs
+      // 25-second timeout per candidate endpoint so it doesn't hang forever but waits for MT5 Python locks
       const timeoutController = new AbortController();
-      const timeoutId = setTimeout(() => timeoutController.abort(), 5000);
+      const timeoutId = setTimeout(() => timeoutController.abort(), 25000);
 
       // Link parent signal if provided
       if (parentSignal) {

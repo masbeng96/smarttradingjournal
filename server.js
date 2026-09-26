@@ -51,7 +51,7 @@ app.get(['/api/mt5/account/:id?', '/api/account/:id?'], async (req, res) => {
           'x-api-key': 'TokenRahasia2026',
           'Accept': 'application/json'
         },
-        signal: AbortSignal.timeout(5000)
+        signal: AbortSignal.timeout(25000)
       });
       
       if (mt5Res.ok) {
